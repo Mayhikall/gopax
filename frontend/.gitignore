@@ -1,0 +1,14 @@
+node_modules/
+.next/
+.env*
+!.env.example
+*.tsbuildinfo
+test-results/
+playwright-report/
+
+# Planning & PRD files
+frontend-plan.md
+prd.md
+*plan*.md
+*prd*.md
+fe-plan.md

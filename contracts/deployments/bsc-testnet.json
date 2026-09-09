@@ -1,0 +1,17 @@
+{
+  "chainId": 97,
+  "token": "0x7c5cB901fDAa9bbc128b70774E9c396587CFBdA8",
+  "rewardManager": "0x9bB656D72B409C38b86D574672d16218AFc8c6dB",
+  "transactions": [
+    "0x4a99fad45a6b8774f1aa2056caf929afdf3f7551fb5fd33788105e5c8f2bb401",
+    "0xbddf12e9b6d947b23e694214dc210e962aae87af43bc14618f3455be04a08367",
+    "0xa58427d81c5f47b6f2b6ac8d96cea8468d90d3dd72f5553034edb4801e918aa2"
+  ],
+  "verifiedChecks": [
+    "receipts successful",
+    "authorized signer matches backend",
+    "manager token address matches",
+    "manager holds MINTER_ROLE",
+    "maxReward 100, minReduction 0"
+  ]
+}

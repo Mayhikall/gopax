@@ -1,0 +1,35 @@
+# Planning & PRD (Do not commit)
+frontend-plan.md
+prd.md
+*plan*.md
+*prd*.md
+fe-plan.md
+
+# Environment variables & secrets
+.env
+.env*.local
+*.local
+!.env.example
+
+# Node dependencies & logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Foundry artifacts
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Frontend / Next.js build
+frontend/.next/
+frontend/out/
+*.tsbuildinfo
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

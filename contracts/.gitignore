@@ -1,0 +1,28 @@
+# Foundry compilation & broadcast artifacts
+out/
+cache/
+broadcast/
+
+# Environment variables & private keys
+.env
+.env*.local
+!.env.example
+
+# Test coverage & static analysis
+coverage/
+coverage.json
+slither.db.json
+crytic-export/
+
+# Planning & PRD files
+frontend-plan.md
+prd.md
+*plan*.md
+*prd*.md
+fe-plan.md
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
