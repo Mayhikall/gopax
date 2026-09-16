@@ -1,4 +1,4 @@
-import { API_URL } from "./config";
+import { API_URL } from "@/lib/web3/config";
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -13,6 +13,12 @@ export async function request<T>(
   options: RequestInit = {},
   token?: string,
 ): Promise<T> {
+  if (!API_URL || !/^https?:\/\//.test(API_URL))
+    throw new ApiError(
+      "The API connection is not configured. Set NEXT_PUBLIC_API_URL to connect Gopax.",
+      503,
+      "API_NOT_CONFIGURED",
+    );
   const response = await fetch(API_URL + path, {
     ...options,
     headers: {

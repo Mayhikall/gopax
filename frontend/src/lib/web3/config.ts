@@ -1,7 +1,8 @@
 import { isAddress } from "viem";
-export const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-).replace(/\/$/, "");
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "").replace(
+  /\/$/,
+  "",
+);
 export const CHAIN_ID = 97;
 export const RPC_URL =
   process.env.NEXT_PUBLIC_RPC_URL ||

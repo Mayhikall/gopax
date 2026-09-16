@@ -9,8 +9,8 @@ import {
   RainbowKitProvider,
   lightTheme,
 } from "@rainbow-me/rainbowkit";
-import { RPC_URL } from "@/lib/config";
-import { SessionProvider } from "@/components/session";
+import { RPC_URL } from "@/lib/web3/config";
+import { SessionProvider } from "@/features/auth/session-provider";
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 const config = projectId
   ? getDefaultConfig({
