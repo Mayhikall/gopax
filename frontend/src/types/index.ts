@@ -26,7 +26,11 @@ export interface Trip {
   reductionPercentage?: Numeric;
   baselineEmissionKg?: Numeric;
   distanceSource?: string | null;
-  comparison: { type: "SYSTEM" | "PERSONAL"; category: Transport } | null;
+  comparison: {
+    type: "SYSTEM" | "PERSONAL";
+    category: Transport;
+    referenceTripId?: string;
+  } | null;
   reward: Reward | null;
   aiDecision?: "REWARD" | "NO_REWARD" | null;
   aiReason?: string | null;
@@ -71,24 +75,3 @@ export const transportLabels: Record<Transport, string> = {
   CAR: "Car",
   AIRPLANE: "Airplane",
 };
-export function number(value: Numeric | undefined) {
-  if (value === null || value === undefined || value === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-export function quantity(value: Numeric | undefined, digits = 2) {
-  const n = number(value);
-  if (n === null) return "—";
-  if (n > 0 && n < 0.01 && digits === 2) return "<0.01";
-  return n.toLocaleString("en-US", { maximumFractionDigits: digits });
-}
-export function tripDate(value: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "Date unavailable";
-  return new Date(value + "T12:00:00Z").toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-export const shortWallet = (s: string) => `${s.slice(0, 6)}…${s.slice(-4)}`;

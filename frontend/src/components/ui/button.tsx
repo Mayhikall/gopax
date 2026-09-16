@@ -20,13 +20,18 @@ export function Button({
   variant,
   size,
   asChild = false,
+  static: isStatic = false,
   ...props
 }: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+    static?: boolean;
+  }) {
   const Component = asChild ? Slot : "button";
   return (
     <Component
       className={cn(buttonVariants({ variant, size }), className)}
+      data-static={isStatic || undefined}
       {...props}
     />
   );

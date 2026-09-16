@@ -17,8 +17,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { createSiweMessage } from "viem/siwe";
 import { request, ApiError } from "@/lib/api";
-import type { User } from "@/lib/types";
-import { CHAIN_ID } from "@/lib/config";
+import type { User } from "@/types";
+import { CHAIN_ID } from "@/lib/web3/config";
 
 type Session = {
   user: User | null;
@@ -46,11 +46,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [busy, setBusy] = useState(false);
 
   const activeAddress = useRef(address);
-  activeAddress.current = address;
   const generation = useRef(0);
+  const tokenRef = useRef<string | null>(null);
+  const requests = useRef(new Set<AbortController>());
+
+  useEffect(() => {
+    activeAddress.current = address;
+  }, [address]);
 
   const clear = useCallback(() => {
     generation.current++;
+    tokenRef.current = null;
+    requests.current.forEach((controller) => controller.abort());
+    requests.current.clear();
     setSession(null);
     void cache.cancelQueries();
     cache.clear();
@@ -70,11 +78,26 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
   const api = useCallback(
     async <T,>(path: string, options: RequestInit = {}) => {
-      if (!session || !user)
+      if (
+        !session ||
+        !user ||
+        tokenRef.current !== session.token ||
+        activeAddress.current?.toLowerCase() !==
+          user.walletAddress.toLowerCase()
+      )
         throw new ApiError("Please sign in to continue.", 401);
       const epoch = generation.current;
+      const controller = new AbortController();
+      requests.current.add(controller);
       try {
-        const data = await request<T>(path, options, session.token);
+        const signal = options.signal
+          ? AbortSignal.any([controller.signal, options.signal])
+          : controller.signal;
+        const data = await request<T>(
+          path,
+          { ...options, signal },
+          session.token,
+        );
         if (epoch !== generation.current)
           throw new ApiError("Wallet session changed.", 401);
         return data;
@@ -87,6 +110,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           clear();
         }
         throw error;
+      } finally {
+        requests.current.delete(controller);
       }
     },
     [session, user, clear],
@@ -128,6 +153,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       ) {
         throw new Error("Wallet changed");
       }
+      tokenRef.current = data.token;
       setSession(data);
       return data.user;
     } finally {

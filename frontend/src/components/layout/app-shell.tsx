@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useAccount, useSwitchChain } from "wagmi";
 import {
   Home,
@@ -12,10 +11,12 @@ import {
   ArrowUpRight,
   ChevronDown,
 } from "lucide-react";
-import { Brand } from "./brand";
-import { useSession } from "./session";
-import { Loading, pathFor } from "./common";
-import { Button } from "./ui/button";
+import { Brand } from "@/components/brand";
+import { useSession } from "@/features/auth/session-provider";
+import { pathFor } from "@/components/common";
+import { Button } from "@/components/ui/button";
+import { CHAIN_ID } from "@/lib/web3/config";
+import { errorMessage } from "@/lib/api";
 const nav = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/impact", label: "Impact", icon: ChartNoAxesCombined },
@@ -32,22 +33,10 @@ export function Shell({
   screen: string;
   demo?: boolean;
 }) {
-  const { user, ready } = useSession();
-  const router = useRouter();
+  const { user } = useSession();
   const { chainId } = useAccount();
   const { switchChainAsync } = useSwitchChain();
-  useEffect(() => {
-    if (!demo && ready) {
-      if (!user) router.replace("/?next=" + encodeURIComponent(screen));
-      else if (!user.name) router.replace("/onboarding");
-    }
-  }, [user, ready, demo, router, screen]);
-  if (!demo && (!ready || !user || !user.name))
-    return (
-      <main id="main">
-        <Loading label="Checking your session…" />
-      </main>
-    );
+  const [networkError, setNetworkError] = useState("");
   const active = (href: string) =>
     href === "/trips"
       ? screen.startsWith("/trips") && screen !== "/trips/new"
@@ -123,16 +112,24 @@ export function Shell({
             </Link>
           </div>
         )}
-        {!demo && chainId !== 97 && (
+        {!demo && chainId !== CHAIN_ID && (
           <div className="network-warning">
             Your wallet is on another network.
             <Button
               variant="outline"
               size="sm"
-              onClick={() => switchChainAsync({ chainId: 97 }).catch(() => {})}
+              onClick={async () => {
+                setNetworkError("");
+                try {
+                  await switchChainAsync({ chainId: CHAIN_ID });
+                } catch (cause) {
+                  setNetworkError(errorMessage(cause));
+                }
+              }}
             >
               Switch to BSC Testnet
             </Button>
+            {networkError && <span role="alert">{networkError}</span>}
           </div>
         )}
         <main id="main" className="page-content">
