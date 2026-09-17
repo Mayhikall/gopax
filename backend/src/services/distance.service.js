@@ -136,14 +136,44 @@ async function geocodeQueued(placeName) {
     );
   }
 
-  const payload = await response.json();
-  const results =
+  let payload = await response.json();
+  let results =
     GEOCODING_PROVIDER === "photon"
       ? payload.features?.map((feature) => ({
           lon: feature.geometry?.coordinates?.[0],
           lat: feature.geometry?.coordinates?.[1],
         }))
       : payload;
+
+  // Fallback: If not found, progressively clean specific house/block numbers
+  if (!results || results.length === 0) {
+    const cleanedPlace = normalizedPlace
+      .replace(/\s*no\.\s*\d+[a-z]?/gi, "")
+      .replace(/\s+\d+(\.\d+)+/gi, "")
+      .replace(/\s*(no\.|rt|rw|blok|gang|gg)\.?\s*[\w\d\.\-]+/gi, "")
+      .replace(/,\s*,+/g, ",")
+      .trim();
+
+    if (cleanedPlace && cleanedPlace.toLowerCase() !== key) {
+      const fallbackUrl =
+        GEOCODING_PROVIDER === "photon"
+          ? `${PHOTON_BASE}/api/?q=${encodeURIComponent(cleanedPlace)}&limit=1`
+          : `${NOMINATIM_BASE}/search?q=${encodeURIComponent(cleanedPlace)}&format=json&limit=1`;
+      const fallbackRes = await requestJson(fallbackUrl, {
+        headers: { "User-Agent": NOMINATIM_USER_AGENT },
+      });
+      if (fallbackRes.ok) {
+        const fallbackPayload = await fallbackRes.json();
+        results =
+          GEOCODING_PROVIDER === "photon"
+            ? fallbackPayload.features?.map((feature) => ({
+                lon: feature.geometry?.coordinates?.[0],
+                lat: feature.geometry?.coordinates?.[1],
+              }))
+            : fallbackPayload;
+      }
+    }
+  }
 
   if (!results || results.length === 0) {
     throw new AppError(
@@ -194,14 +224,22 @@ async function getRouteDistance(from, to) {
     `${from.lon},${from.lat};${to.lon},${to.lat}` +
     `?overview=false&geometries=polyline`;
 
-  const response = await requestJson(url);
+  let response;
+  try {
+    response = await requestJson(url);
+  } catch (err) {
+    console.warn(
+      `[distance] OSRM route failed (${err.message}). Falling back to Haversine straight-line distance * 1.3 road factor.`,
+    );
+    const gcd = haversine(from.lat, from.lon, to.lat, to.lon);
+    const approxKm = Math.round(gcd * 1.3 * 100) / 100; // Road tortuosity factor ~1.3
+    routeCache.set(cacheKey, approxKm);
+    return approxKm;
+  }
 
   if (!response.ok) {
-    throw new AppError(
-      "We couldn't calculate the trip distance. Please try again.",
-      502,
-      "OSRM_FAILED",
-    );
+    const gcd = haversine(from.lat, from.lon, to.lat, to.lon);
+    return Math.round(gcd * 1.3 * 100) / 100;
   }
 
   const data = await response.json();
