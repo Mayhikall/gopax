@@ -38,6 +38,7 @@ async function createTrip(req, res, next) {
     let extraction;
     try {
       extraction = await agentService.extractTripInfo(fileBuffer, mimeType);
+      console.log("[trip] AI extraction result:", extraction);
     } catch (agentErr) {
       console.error("[trip] AI extraction failed:", agentErr.message);
       return next(
@@ -97,8 +98,12 @@ async function createTrip(req, res, next) {
     let distanceKm;
     let distanceSource;
     try {
-      // Use extracted distance for TRAIN if available
-      if (category === "TRAIN" && verification.data.distance) {
+      // Use extracted distance from proof if available and valid (> 0)
+      if (
+        verification.data.distance &&
+        !isNaN(parseFloat(verification.data.distance)) &&
+        parseFloat(verification.data.distance) > 0
+      ) {
         distanceKm = parseFloat(verification.data.distance);
         distanceSource = "PROOF_DISTANCE";
       } else {
