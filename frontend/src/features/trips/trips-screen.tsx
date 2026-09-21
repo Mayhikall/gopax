@@ -38,7 +38,7 @@ export function TripsScreen({
     <>
       <PageHeader
         title="Your trips"
-        description="Your journeys, with a little more meaning."
+        description="Your tickets, routes, and rewards in one travel record."
       >
         <Button asChild>
           <Link href={pathFor("/trips/new", demo)}>

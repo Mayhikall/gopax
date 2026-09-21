@@ -11,7 +11,7 @@ export function number(value: Numeric | undefined) {
 }
 export function quantity(value: Numeric | undefined, digits = 2) {
   const n = number(value);
-  if (n === null) return "—";
+  if (n === null) return "N/A";
   if (n !== 0 && Math.abs(n) < 0.01 && digits === 2)
     return n < 0 ? "−<0.01" : "<0.01";
   return n.toLocaleString("en-US", {

@@ -1,6 +1,6 @@
 # Gopax frontend
 
-Implementasi struktur bagian 7 `frontend-plan-gopax.md`: Next.js App Router, TypeScript, Tailwind CSS dengan semantic CSS tokens, shadcn-style Button, TanStack Query, wagmi, viem, dan RainbowKit. Desain menggunakan skill lokal `emil-design-eng` dan `make-interfaces-feel-better`.
+Implementasi struktur bagian 7 `frontend-plan-gopax.md`: Next.js App Router, TypeScript, Tailwind CSS dengan semantic CSS tokens, shadcn-style Button, TanStack Query, wagmi, viem, dan RainbowKit. Perombakan UI menggunakan skill `antislop`, `antislop-ui`, `antislop-copywriting`, `antislop-human`, dan `antislop-layoutmobile`. Arah visual jurnal perjalanan, alasan keputusan, dan motion tercatat di [DESIGN.md](DESIGN.md).
 
 ## Menjalankan
 
@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Buka `http://localhost:3000`. Pilih **Explore the design preview**, atau buka `http://localhost:3000/preview`. Preview tidak memerlukan wallet maupun backend. Semua angka preview adalah fixture yang dilabeli; file yang dipilih di preview tidak diunggah, dan tombol claim tidak mengirim transaksi.
+Frontend dikunci ke `http://localhost:3000`. Jika port tersebut sedang digunakan proses lain, hentikan proses itu sebelum menjalankan Gopax. Pilih **View sample journeys**, atau buka `http://localhost:3000/preview`. Preview tidak memerlukan wallet maupun backend. Semua angka preview adalah fixture yang dilabeli; file yang dipilih di preview tidak diunggah, dan tombol claim tidak mengirim transaksi.
 
 Pilihan **Preview state** menyediakan akun kosong, processing, assessment unavailable, no reward, no comparison, negative comparison, zero savings, small values, long route names, loading, dan service error. Gunakan pilihan tersebut pada Home/Impact/Trips atau detail sample sesuai state yang ingin dilihat. Navigasi antarhalaman kembali ke dataset default.
 

@@ -26,6 +26,32 @@ export function useTrips(category = "", rewardStatus = "", demo = false) {
       last.hasMore ? (last.nextOffset ?? undefined) : undefined,
   });
 }
+export function useAllTrips(demo = false, enabled = true) {
+  const { api, user } = useSession();
+  return useQuery({
+    queryKey: ["trips", user?.id, "all"],
+    enabled: !!user && !demo && enabled,
+    queryFn: async ({ signal }) => {
+      const trips: Trip[] = [];
+      let offset = 0;
+
+      while (true) {
+        const page = await api<TripPage>(
+          `/trips?${new URLSearchParams({ limit: "100", offset: String(offset) })}`,
+          { signal },
+        );
+        trips.push(...page.trips);
+        if (
+          !page.hasMore ||
+          page.nextOffset === null ||
+          page.nextOffset <= offset
+        )
+          return trips;
+        offset = page.nextOffset;
+      }
+    },
+  });
+}
 export function useTrip(id: string, demo = false) {
   const { api, user } = useSession();
   return useQuery({

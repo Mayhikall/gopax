@@ -21,7 +21,7 @@ export function ProfileScreen({ demo = false }: { demo?: boolean }) {
     <>
       <PageHeader
         title="Your profile"
-        description="Your identity, your wallet, your journeys."
+        description="Manage your name and connected wallet."
       />
       <div className="profile-layout">
         <section className="surface profile-panel">
@@ -31,7 +31,6 @@ export function ProfileScreen({ demo = false }: { demo?: boolean }) {
             </span>
             <div>
               <h2>{demo ? "Maya" : user?.name}</h2>
-              <span className="subtle">Your Gopax travel companion</span>
             </div>
           </div>
           <ProfileForm demo={demo} key={user?.id || "demo"} />

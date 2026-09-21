@@ -8,16 +8,18 @@ export function ImpactHero({
   saved,
   coverage,
   demo = false,
+  summary = false,
 }: {
   saved: number | string | null;
   coverage?: string;
   demo?: boolean;
+  summary?: boolean;
 }) {
   return (
-    <section className="impact-hero">
+    <section className={`impact-hero${summary ? " impact-summary" : ""}`}>
       <div className="hero-copy">
         <span className="eyebrow">
-          <span className="status-dot" /> Your travel impact
+          Your travel footprint
         </span>
         <p className="hero-metric-label">Your estimated CO₂ savings</p>
         <div className="hero-number">
@@ -35,15 +37,14 @@ export function ImpactHero({
             : coverage || "Compared with car travel on eligible routes."}
         </p>
         <Button asChild variant="lime">
-          <Link href={pathFor("/trips/new", demo)}>
-            Add a trip <ArrowUpRight size={17} />
+          <Link href={pathFor(summary ? "/impact" : "/trips/new", demo)}>
+            {summary ? "View your impact" : "Add a trip"} <ArrowUpRight size={17} />
           </Link>
         </Button>
       </div>
       <div className="hero-art">
         <RouteLeaf />
       </div>
-      <div className="hero-watermark">GO A LITTLE GREENER</div>
     </section>
   );
 }

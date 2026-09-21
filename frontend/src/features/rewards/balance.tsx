@@ -38,7 +38,7 @@ export function Balance({ demo = false }: { demo?: boolean }) {
     chainId: CHAIN_ID,
     query: { enabled: !demo && !!address && CONTRACTS_READY },
   });
-  if (demo) return <>{preview?.balance ?? "—"}</>;
+  if (demo) return <>{preview?.balance ?? "N/A"}</>;
   if (!CONTRACTS_READY)
     return <span className="metric-error">Not configured</span>;
   if (result.isError || decimals.isError)
@@ -53,6 +53,6 @@ export function Balance({ demo = false }: { demo?: boolean }) {
         Retry balance
       </button>
     );
-  if (result.data === undefined || decimals.data === undefined) return <>—</>;
+  if (result.data === undefined || decimals.data === undefined) return <>N/A</>;
   return <>{quantity(formatUnits(result.data, decimals.data))}</>;
 }

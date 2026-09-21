@@ -8,9 +8,9 @@ import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 import Providers from "./providers";
 export const metadata: Metadata = {
-  title: { default: "Gopax — Every trip counts", template: "%s · Gopax" },
+  title: { default: "Gopax", template: "%s · Gopax" },
   description:
-    "Turn your travel tickets into insights. Track your carbon impact and claim GOPAX rewards on BSC Testnet.",
+    "Upload a travel ticket to save the route and view estimated emissions. Eligible trips can receive GOPAX rewards.",
   icons: { icon: "/logo.svg" },
 };
 export default function RootLayout({

@@ -45,7 +45,6 @@ export function Shell({
     <div className="app-layout">
       <aside className="sidebar">
         <Brand />
-        <div className="sidebar-heading">YOUR TRAVEL COMPANION</div>
         <nav aria-label="Main navigation">
           {nav.map((item) => (
             <Link
@@ -56,28 +55,9 @@ export function Shell({
             >
               <item.icon size={20} />
               <span>{item.label}</span>
-              {active(item.href) && <span className="nav-dot" />}
             </Link>
           ))}
         </nav>
-        <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <span className="tiny-leaf">✳</span>
-            <strong>
-              Small choices.
-              <br />
-              Meaningful journeys.
-            </strong>
-            <p>Your next ticket is a step toward understanding your impact.</p>
-            <Link href={pathFor("/trips/new", demo)}>
-              Make it count <ArrowUpRight size={16} />
-            </Link>
-          </div>
-          <span className="network-label">
-            <i /> BSC Testnet
-          </span>
-          <p className="sidebar-footer">Made for the way you move.</p>
-        </div>
       </aside>
       <div className="app-main">
         <header className="topbar">
@@ -85,15 +65,12 @@ export function Shell({
             <Brand />
           </div>
           <div className="breadcrumb">
-            Your space <span>/</span>{" "}
+            Travel journal <span>/</span>{" "}
             {screen.startsWith("/trips/") && screen !== "/trips/new"
               ? "Trip details"
               : nav.find((n) => n.href === screen)?.label || "Home"}
           </div>
           <div className="topbar-right">
-            <span className="network-pill">
-              <i /> BSC Testnet
-            </span>
             <Link className="user-chip" href={pathFor("/profile", demo)}>
               <span className="avatar">
                 {demo ? "M" : user?.name?.slice(0, 1).toUpperCase()}
@@ -133,11 +110,9 @@ export function Shell({
           </div>
         )}
         <main id="main" className="page-content">
-          {children}
-          <footer className="page-footer">
-            <span>Every trip leaves an impact. Make yours count.</span>
-            <span>Gopax · Testnet edition</span>
-          </footer>
+          <div className="screen-enter" key={screen}>
+            {children}
+          </div>
         </main>
       </div>
       <nav className="bottom-nav" aria-label="Mobile navigation">
