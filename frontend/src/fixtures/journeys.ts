@@ -134,8 +134,8 @@ export function previewData(state = "default"): PreviewData {
     });
   if (state === "long-route")
     Object.assign(first, {
-      origin: "Stasiun Yogyakarta Tugu — Daerah Istimewa Yogyakarta",
-      destination: "Stasiun Solo Balapan — Kecamatan Banjarsari, Surakarta",
+      origin: "Stasiun Yogyakarta Tugu, Daerah Istimewa Yogyakarta",
+      destination: "Stasiun Solo Balapan, Kecamatan Banjarsari, Surakarta",
     });
   // Preview aggregates belong to the selected sample dataset only.
   const verified = trips.filter((trip) => trip.status === "VERIFIED");

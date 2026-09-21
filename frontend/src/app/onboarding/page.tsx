@@ -10,11 +10,7 @@ export default function OnboardingPage() {
       <main id="main" className="onboarding">
         <Brand />
         <section className="surface onboarding-card">
-          <span className="eyebrow">A little introduction</span>
           <h1>What should we call you?</h1>
-          <p className="subtle">
-            Make yourself at home. Your next journey starts here.
-          </p>
           <ProfileForm key={user?.id} onboarding />
           <div className="guide-divider" />
           <WalletIdentity address={user?.walletAddress || ""} />

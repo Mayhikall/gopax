@@ -115,7 +115,6 @@ export function TripDetail({
     <>
       <PageHeader
         title="Trip details"
-        description="The story behind your journey."
         back={pathFor("/trips", demo)}
       >
         {trip && <Badge status={trip.status} />}

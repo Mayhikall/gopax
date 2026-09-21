@@ -94,7 +94,7 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
     <>
       <PageHeader
         title="Add a trip"
-        description="A ticket today. A little more insight tomorrow."
+        description="Save your travel proof to see the route, impact, and reward assessment."
         back={pathFor("/trips", demo)}
       />
       <div className="upload-layout">
@@ -106,6 +106,7 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
           <input
             ref={picker}
             className="sr-only"
+            tabIndex={-1}
             type="file"
             accept="image/jpeg,image/png"
             aria-label="Choose a ticket image"
@@ -118,6 +119,7 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
           <input
             ref={camera}
             className="sr-only"
+            tabIndex={-1}
             type="file"
             accept="image/jpeg,image/png"
             capture="environment"
@@ -178,7 +180,7 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
                 <span className="upload-illustration">
                   <Ticket size={38} />
                 </span>
-                <h3>Your journey starts here</h3>
+                <h3>Add your travel proof</h3>
                 <p>Drop your ticket here, or choose a file below.</p>
                 <span className="subtle">JPG or PNG · Up to 10 MiB</span>
               </>
@@ -242,7 +244,7 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
           </p>
         </section>
         <aside className="upload-guide">
-          <span className="eyebrow">A good ticket goes a long way</span>
+          <span className="eyebrow">Before you upload</span>
           <h2>
             Keep the details
             <br />
@@ -261,7 +263,7 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
             ))}
           </ul>
           <div className="guide-divider" />
-          <h3>One journey. Three little steps.</h3>
+          <h3>What happens next</h3>
           <ol>
             <li>
               <span>01</span>Upload your travel proof

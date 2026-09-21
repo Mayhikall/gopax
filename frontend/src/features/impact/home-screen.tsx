@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { ArrowUpRight, Coins, Ticket, Plus, Leaf } from "lucide-react";
+import { ArrowUpRight, Coins, Ticket, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Balance,
   Empty,
@@ -33,11 +34,12 @@ export function HomeScreen({ demo = false }: { demo?: boolean }) {
     <>
       <PageHeader
         title={`Hello, ${demo ? "Maya" : user?.name?.split(" ")[0] || "traveler"}.`}
-        description="A little perspective on the way you move."
       >
-        <span className="period-label">
-          Your travel, at a glance <Leaf size={16} />
-        </span>
+        <Button asChild>
+          <Link href={pathFor("/trips/new", demo)}>
+            <Plus size={18} /> Add a trip
+          </Link>
+        </Button>
       </PageHeader>
       {impactQuery.isError && !demo ? (
         <ErrorState
@@ -48,36 +50,29 @@ export function HomeScreen({ demo = false }: { demo?: boolean }) {
         <Loading />
       ) : (
         <>
-          <ImpactHero
-            saved={impact.totalCarbonSavedKg}
-            coverage={`Based on ${impact.carbonSavedCoverage.comparedTrips} of ${impact.carbonSavedCoverage.verifiedTrips} verified trips.`}
-            demo={demo}
-          />
-          <div className="metric-grid home-metrics">
-            <MetricCard
-              icon={Coins}
-              label="GOPAX balance"
-              value={<Balance demo={demo} />}
-              unit="GOPAX"
-              caption="Tokens in your connected wallet"
+          <div className="home-overview">
+            <ImpactHero
+              saved={impact.totalCarbonSavedKg}
+              coverage={`${impact.carbonSavedCoverage.comparedTrips} of ${impact.carbonSavedCoverage.verifiedTrips} verified trips compared with car travel.`}
+              demo={demo}
+              summary
             />
-            <MetricCard
-              icon={Ticket}
-              label="Verified trips"
-              value={quantity(impact.totalTrips, 0)}
-              caption="Journeys with a verified travel proof"
-            />
-          </div>
-          <Link className="add-trip-card" href={pathFor("/trips/new", demo)}>
-            <span className="add-trip-icon">
-              <Plus size={23} />
-            </span>
-            <div>
-              <strong>Every ticket tells a story.</strong>
-              <p>Add a trip · Upload a ticket or receipt</p>
+            <div className="metric-grid home-metrics">
+              <MetricCard
+                icon={Coins}
+                label="GOPAX balance"
+                value={<Balance demo={demo} />}
+                unit="GOPAX"
+                caption="Tokens in your connected wallet"
+              />
+              <MetricCard
+                icon={Ticket}
+                label="Verified trips"
+                value={quantity(impact.totalTrips, 0)}
+                caption="Journeys with a verified travel proof"
+              />
             </div>
-            <ArrowUpRight size={21} />
-          </Link>
+          </div>
           {impact.totalAvailableGopaxReward > 0 && (
             <Link
               className="claim-strip"
@@ -85,7 +80,8 @@ export function HomeScreen({ demo = false }: { demo?: boolean }) {
             >
               <Coins size={21} />
               <span>
-                Ready when you are <small>Your available rewards</small>
+                Rewards ready to claim
+                <small>Review the eligible journey before claiming</small>
               </span>
               <strong>
                 {quantity(impact.totalAvailableGopaxReward, 0)}{" "}
