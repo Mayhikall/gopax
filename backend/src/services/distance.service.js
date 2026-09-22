@@ -330,6 +330,66 @@ async function lookupAirport(code) {
   return result;
 }
 
+/**
+ * Resolve an airport identifier to coordinates.
+ * Direct IATA/ICAO codes use FreeAirportDB; human-readable ticket labels use
+ * the configured geocoder so the extraction can preserve the original text.
+ *
+ * @param {string} identifier
+ * @returns {Promise<{ lat: number, lon: number, name?: string }>}
+ */
+async function resolveAirportLocation(identifier) {
+  const value = String(identifier || "").trim();
+  if (!value) {
+    throw new AppError(
+      "We couldn't identify one of the airports.",
+      422,
+      "AIRPORT_NOT_FOUND",
+    );
+  }
+
+  const exactCode = /^[A-Z0-9]{3,4}$/i.test(value)
+    ? value
+    : value.match(/\(([A-Z0-9]{3,4})\)/i)?.[1];
+
+  if (exactCode) {
+    try {
+      const airport = await lookupAirport(exactCode);
+      if (
+        Number.isFinite(airport.lat) &&
+        Number.isFinite(airport.lon) &&
+        Math.abs(airport.lat) <= 90 &&
+        Math.abs(airport.lon) <= 180
+      ) {
+        return airport;
+      }
+    } catch {
+      // A code lookup failure can still be recovered through geocoding.
+    }
+  }
+
+  const hasAirportQualifier = /\b(airport|bandara|bandar udara)\b/i.test(value);
+  const queries = hasAirportQualifier
+    ? [value]
+    : [`${value} airport`, value];
+  let lastError;
+
+  for (const query of queries) {
+    try {
+      return await geocode(query);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) throw lastError;
+  throw new AppError(
+    "We couldn't identify one of the airports.",
+    422,
+    "AIRPORT_NOT_FOUND",
+  );
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -353,14 +413,14 @@ async function resolveLandDistance(origin, destination) {
 /**
  * Resolve distance for AIRPLANE using airport database + Haversine.
  *
- * @param {string} originCode - IATA/ICAO code (e.g. "CGK")
- * @param {string} destinationCode
+ * @param {string} originIdentifier - Airport name or IATA/ICAO code
+ * @param {string} destinationIdentifier - Airport name or IATA/ICAO code
  * @returns {Promise<number>} distance_km
  */
-async function resolveAirportDistance(originCode, destinationCode) {
+async function resolveAirportDistance(originIdentifier, destinationIdentifier) {
   const [fromAirport, toAirport] = await Promise.all([
-    lookupAirport(originCode),
-    lookupAirport(destinationCode),
+    resolveAirportLocation(originIdentifier),
+    resolveAirportLocation(destinationIdentifier),
   ]);
 
   const distanceKm = haversine(
@@ -399,6 +459,7 @@ module.exports = {
   geocode,
   getRouteDistance,
   lookupAirport,
+  resolveAirportLocation,
   resolveLandDistance,
   resolveAirportDistance,
   resolveDistance,

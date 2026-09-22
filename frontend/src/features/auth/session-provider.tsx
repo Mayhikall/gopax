@@ -20,6 +20,7 @@ import { request, ApiError } from "@/lib/api";
 import type { User } from "@/types";
 import { CHAIN_ID } from "@/lib/web3/config";
 
+type StoredSession = { token: string; user: User };
 type Session = {
   user: User | null;
   ready: boolean;
@@ -31,6 +32,40 @@ type Session = {
 };
 
 const Context = createContext<Session | null>(null);
+const SESSION_STORAGE_KEY = "gopax.auth.session.v1";
+
+function readStoredSession(): StoredSession | null {
+  try {
+    const value = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!value) return null;
+    const parsed = JSON.parse(value) as Partial<StoredSession>;
+    const user = parsed.user;
+    if (
+      typeof parsed.token !== "string" ||
+      !parsed.token ||
+      !user ||
+      typeof user.id !== "string" ||
+      typeof user.walletAddress !== "string" ||
+      (user.name !== null && typeof user.name !== "string")
+    ) {
+      writeStoredSession(null);
+      return null;
+    }
+    return { token: parsed.token, user };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredSession(session: StoredSession | null) {
+  try {
+    if (session)
+      window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    else window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch {
+    // Authentication still works for this tab when storage is unavailable.
+  }
+}
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const { address, isConnected, chainId } = useAccount();
@@ -39,7 +74,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const { switchChainAsync } = useSwitchChain();
   const cache = useQueryClient();
 
-  const [session, setSession] = useState<{ token: string; user: User } | null>(
+  const [session, setSession] = useState<StoredSession | null>(
     null,
   );
   const [ready, setReady] = useState(false);
@@ -57,22 +92,72 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const clear = useCallback(() => {
     generation.current++;
     tokenRef.current = null;
+    writeStoredSession(null);
     requests.current.forEach((controller) => controller.abort());
     requests.current.clear();
     setSession(null);
+    setReady(true);
     void cache.cancelQueries();
     cache.clear();
   }, [cache]);
 
   useEffect(() => {
+    const stored = readStoredSession();
+    if (!stored) {
+      setReady(true);
+      return;
+    }
+
+    const epoch = generation.current;
+    const controller = new AbortController();
+    tokenRef.current = stored.token;
+    setSession(stored);
     setReady(true);
+
+    void request<User>(
+      "/users/me",
+      { signal: controller.signal },
+      stored.token,
+    )
+      .then((freshUser) => {
+        if (epoch !== generation.current) return;
+        const connectedAddress = activeAddress.current;
+        if (
+          connectedAddress &&
+          freshUser.walletAddress.toLowerCase() !==
+            connectedAddress.toLowerCase()
+        ) {
+          clear();
+          return;
+        }
+        const restored = { token: stored.token, user: freshUser };
+        tokenRef.current = stored.token;
+        setSession(restored);
+        writeStoredSession(restored);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted || epoch !== generation.current) return;
+        if (error instanceof ApiError && error.status === 401) clear();
+      });
+
+    return () => controller.abort();
+  }, [clear]);
+
+  useEffect(() => {
+    if (
+      !address ||
+      !isConnected ||
+      !session ||
+      session.user.walletAddress.toLowerCase() === address.toLowerCase()
+    )
+      return;
     clear();
-  }, [address, isConnected, clear]);
+  }, [address, isConnected, session, clear]);
 
   const user =
     session &&
-    isConnected &&
-    session.user.walletAddress.toLowerCase() === address?.toLowerCase()
+    (!address ||
+      session.user.walletAddress.toLowerCase() === address.toLowerCase())
       ? session.user
       : null;
 
@@ -82,8 +167,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         !session ||
         !user ||
         tokenRef.current !== session.token ||
-        activeAddress.current?.toLowerCase() !==
-          user.walletAddress.toLowerCase()
+        (activeAddress.current &&
+          activeAddress.current.toLowerCase() !==
+            user.walletAddress.toLowerCase())
       )
         throw new ApiError("Please sign in to continue.", 401);
       const epoch = generation.current;
@@ -153,8 +239,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       ) {
         throw new Error("Wallet changed");
       }
-      tokenRef.current = data.token;
-      setSession(data);
+      const nextSession = { token: data.token, user: data.user };
+      tokenRef.current = nextSession.token;
+      setSession(nextSession);
+      writeStoredSession(nextSession);
       return data.user;
     } finally {
       setBusy(false);
@@ -173,8 +261,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           clear();
           disconnect();
         },
-        setUser: (user) =>
-          setSession((current) => (current ? { ...current, user } : null)),
+        setUser: (user) => {
+          setSession((current) => {
+            if (!current) return null;
+            const updated = { ...current, user };
+            writeStoredSession(updated);
+            return updated;
+          });
+        },
       }}
     >
       {children}

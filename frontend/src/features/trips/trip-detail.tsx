@@ -11,12 +11,11 @@ import { PageHeader } from "@/components/layout/page-header";
 import { RewardPanel } from "@/features/rewards/reward-panel";
 import { usePreview } from "@/components/layout/preview-context";
 import { errorMessage } from "@/lib/api";
-import { number, quantity, tripDate } from "@/lib/format";
+import { quantity, tripDate } from "@/lib/format";
 import { transportLabels, type Trip } from "@/types";
 import { useTrip } from "./queries";
 
 export function RouteTicket({ trip }: { trip: Trip }) {
-  const saved = number(trip.carbonReductionKg);
   const source: Record<string, string> = {
     PROOF_DISTANCE: "Distance from ticket",
     ROUTE_ESTIMATE: "Estimated route distance",
@@ -65,37 +64,7 @@ export function RouteTicket({ trip }: { trip: Trip }) {
             {quantity(trip.carbonEmissionKg)} <small>kg CO₂e</small>
           </strong>
         </div>
-        {trip.comparison && saved !== null ? (
-          <div>
-            <span>
-              {saved < 0
-                ? "More CO₂ emitted"
-                : saved === 0
-                  ? "No CO₂ savings"
-                  : "CO₂ saved"}
-            </span>
-            <strong>
-              {quantity(Math.abs(saved))} <small>kg CO₂e</small>
-            </strong>
-          </div>
-        ) : (
-          <div>
-            <span>CO₂ comparison</span>
-            <p>Comparison unavailable</p>
-          </div>
-        )}
       </div>
-      <p className="ticket-comparison">
-        {trip.comparison
-          ? `Compared with ${transportLabels[trip.comparison.category].toLowerCase()} · ${trip.comparison.type === "SYSTEM" ? "System comparison" : "Personal comparison (excluded from system totals)"}`
-          : "There is no valid comparison for this journey. Only its available emissions estimate is shown."}
-      </p>
-      {trip.comparison?.type === "PERSONAL" &&
-        trip.comparison.referenceTripId && (
-          <p className="subtle">
-            Reference trip: {trip.comparison.referenceTripId}
-          </p>
-        )}
     </section>
   );
 }
@@ -113,10 +82,7 @@ export function TripDetail({
     : query.data;
   return (
     <>
-      <PageHeader
-        title="Trip details"
-        back={pathFor("/trips", demo)}
-      >
+      <PageHeader title="Trip details" back={pathFor("/trips", demo)}>
         {trip && <Badge status={trip.status} />}
       </PageHeader>
       {query.isError && !demo ? (

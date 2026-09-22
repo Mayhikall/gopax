@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpRight, Coins, RotateCw } from "lucide-react";
+import { ArrowUpRight, Coins, RotateCw, Sparkles } from "lucide-react";
 import { Badge, InfoNote } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/session-provider";
@@ -75,15 +75,23 @@ export function RewardPanel({
               : "No reward for this trip"}
         </h3>
       )}
-      <p className="subtle">
-        {trip.aiReason ||
-          (unavailable
+      {trip.aiReason ? (
+        <div className="ai-reason">
+          <span className="ai-reason-label">
+            <Sparkles size={15} aria-hidden="true" /> AI assessment
+          </span>
+          <p>{trip.aiReason}</p>
+        </div>
+      ) : (
+        <p className="subtle">
+          {unavailable
             ? processingError?.message ||
               "Your proof is saved. Assessment could not finish, and no reward decision has been made yet."
             : trip.reward
               ? "Your reward follows the validated assessment of your travel proof."
-              : "This journey did not receive a reward. Any available carbon estimate is shown separately.")}
-      </p>
+              : "This journey did not receive a reward. Any available carbon estimate is shown separately."}
+        </p>
+      )}
       {unavailable && (
         <Button variant="outline" disabled={busy || demo} onClick={retry}>
           <RotateCw size={17} />
@@ -113,8 +121,7 @@ export function RewardPanel({
       )}
       {trip.reward?.status === "FAILED" && (
         <p className="field-error">
-          This claim is marked as failed. Use its original transaction hash to
-          check the receipt and recover your history.
+          This claim is marked as failed and is currently unavailable.
         </p>
       )}
       {error && (

@@ -1,21 +1,14 @@
 "use client";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useSwitchChain } from "wagmi";
-import { Coins, LogOut, ShieldCheck } from "lucide-react";
+import { Coins, LogOut } from "lucide-react";
 import { Balance } from "@/components/common";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/session-provider";
-import { CHAIN_ID } from "@/lib/web3/config";
-import { errorMessage } from "@/lib/api";
 import { ProfileForm, WalletIdentity } from "./profile-form";
 
 export function ProfileScreen({ demo = false }: { demo?: boolean }) {
   const { user, logout } = useSession();
-  const { chainId } = useAccount();
-  const { switchChainAsync, isPending } = useSwitchChain();
-  const [error, setError] = useState("");
   const router = useRouter();
   return (
     <>
@@ -54,38 +47,6 @@ export function ProfileScreen({ demo = false }: { demo?: boolean }) {
               Tokens held in your wallet, separate from rewards waiting to be
               claimed.
             </p>
-          </section>
-          <section className="surface network-card">
-            <ShieldCheck size={23} />
-            <h3>Your network</h3>
-            <p>
-              BSC Testnet <span className="badge">Chain 97</span>
-            </p>
-            {!demo && chainId !== CHAIN_ID ? (
-              <Button
-                variant="outline"
-                disabled={isPending}
-                onClick={async () => {
-                  setError("");
-                  try {
-                    await switchChainAsync({ chainId: CHAIN_ID });
-                  } catch (cause) {
-                    setError(errorMessage(cause));
-                  }
-                }}
-              >
-                {isPending ? "Switching…" : "Switch network"}
-              </Button>
-            ) : (
-              <p className="subtle">
-                {demo ? "Preview network" : "Connected to the correct network"}
-              </p>
-            )}
-            {error && (
-              <p className="field-error" role="alert">
-                {error}
-              </p>
-            )}
           </section>
           <Button
             variant="outline"

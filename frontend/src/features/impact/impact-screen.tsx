@@ -96,8 +96,7 @@ function aggregateImpact(trips: Trip[]): Impact {
     ),
     totalCarbonSavedKg: compared.length
       ? compared.reduce(
-          (sum, trip) =>
-            sum + Math.max(0, number(trip.carbonReductionKg) ?? 0),
+          (sum, trip) => sum + Math.max(0, number(trip.carbonReductionKg) ?? 0),
           0,
         )
       : null,
@@ -138,16 +137,11 @@ export function ImpactScreen({ demo = false }: { demo?: boolean }) {
     [periodTrips],
   );
   const impact =
-    period === "all"
-      ? demo
-        ? preview?.impact
-        : query.data
-      : filteredImpact;
+    period === "all" ? (demo ? preview?.impact : query.data) : filteredImpact;
   const periodError = tripsQuery.isError && !demo;
-  const loading =
-    demo
-      ? !impact || !periodTrips
-      : !impact || tripsQuery.isPending || !periodTrips;
+  const loading = demo
+    ? !impact || !periodTrips
+    : !impact || tripsQuery.isPending || !periodTrips;
   return (
     <>
       <PageHeader
@@ -175,9 +169,7 @@ export function ImpactScreen({ demo = false }: { demo?: boolean }) {
       </PageHeader>
       {(query.isError && !demo && period === "all") || periodError ? (
         <ErrorState
-          message={errorMessage(
-            periodError ? tripsQuery.error : query.error,
-          )}
+          message={errorMessage(periodError ? tripsQuery.error : query.error)}
           retry={() =>
             void (periodError ? tripsQuery.refetch() : query.refetch())
           }
@@ -227,9 +219,8 @@ export function ImpactScreen({ demo = false }: { demo?: boolean }) {
                   : `No verified travel records for ${periodLabel(period, today)}.`
               }
             />
-          ) : (
-            <ImpactCharts trips={periodTrips} />
-          )}
+          ) : null}
+          <ImpactCharts trips={periodTrips || []} />
           <div className="section-spacer">
             <InfoNote>
               Savings only include journeys with an available system comparison.

@@ -413,7 +413,7 @@ async function retryRewardAssessment(tripId, userId) {
         "EXTRACTION_CONFLICT",
       );
     }
-    const proofDistance = trip.category === "TRAIN" ? extracted.distance : null;
+    const proofDistance = extracted.distance;
     const distanceKm =
       proofDistance ??
       (await distanceService.resolveDistance(

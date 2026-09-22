@@ -35,7 +35,7 @@ export function HomeScreen({ demo = false }: { demo?: boolean }) {
       <PageHeader
         title={`Hello, ${demo ? "Maya" : user?.name?.split(" ")[0] || "traveler"}.`}
       >
-        <Button asChild>
+        <Button asChild className="home-add-trip">
           <Link href={pathFor("/trips/new", demo)}>
             <Plus size={18} /> Add a trip
           </Link>
@@ -52,10 +52,11 @@ export function HomeScreen({ demo = false }: { demo?: boolean }) {
         <>
           <div className="home-overview">
             <ImpactHero
-              saved={impact.totalCarbonSavedKg}
-              coverage={`${impact.carbonSavedCoverage.comparedTrips} of ${impact.carbonSavedCoverage.verifiedTrips} verified trips compared with car travel.`}
+              saved={impact.totalCarbonEmissionKg}
+              coverage={`Across ${quantity(impact.totalTrips, 0)} verified ${impact.totalTrips === 1 ? "journey" : "journeys"}.`}
               demo={demo}
               summary
+              total
             />
             <div className="metric-grid home-metrics">
               <MetricCard

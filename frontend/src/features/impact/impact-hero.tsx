@@ -9,36 +9,36 @@ export function ImpactHero({
   coverage,
   demo = false,
   summary = false,
+  total = false,
 }: {
   saved: number | string | null;
   coverage?: string;
   demo?: boolean;
   summary?: boolean;
+  total?: boolean;
 }) {
   return (
     <section className={`impact-hero${summary ? " impact-summary" : ""}`}>
       <div className="hero-copy">
-        <span className="eyebrow">
-          Your travel footprint
-        </span>
-        <p className="hero-metric-label">Your estimated CO₂ savings</p>
+        <span className="eyebrow">Your travel footprint</span>
+        <p className="hero-metric-label">
+          {total
+            ? "Total estimated CO₂ emissions"
+            : "Your estimated CO₂ savings"}
+        </p>
         <div className="hero-number">
-          {saved === null ? (
-            <span className="hero-unavailable">Comparison unavailable</span>
-          ) : (
-            <>
-              {quantity(saved)} <span>kg</span>
-            </>
-          )}
+          {saved === null ? "0" : quantity(saved)} <span>kg</span>
         </div>
         <p className="hero-caption">
-          {saved === null
-            ? "Savings appear when a verified journey has a valid comparison."
-            : coverage || "Compared with car travel on eligible routes."}
+          {coverage ||
+            (total
+              ? "Across all your verified journeys."
+              : "Compared with car travel on eligible routes.")}
         </p>
         <Button asChild variant="lime">
           <Link href={pathFor(summary ? "/impact" : "/trips/new", demo)}>
-            {summary ? "View your impact" : "Add a trip"} <ArrowUpRight size={17} />
+            {summary ? "View your impact" : "Add a trip"}{" "}
+            <ArrowUpRight size={17} />
           </Link>
         </Button>
       </div>

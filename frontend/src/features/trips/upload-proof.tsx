@@ -1,14 +1,19 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  BrainCircuit,
+  CalendarDays,
   Camera,
   Check,
   ImagePlus,
   LockKeyhole,
   LoaderCircle,
+  MapPin,
+  ScanLine,
   Ticket,
   Upload,
   X,
@@ -25,8 +30,14 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraStarting, setCameraStarting] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const cameraStream = useRef<MediaStream | null>(null);
+  const cameraRequest = useRef(0);
   const inFlight = useRef(false);
   const { api, user } = useSession();
   const cache = useQueryClient();
@@ -40,6 +51,15 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
+  useEffect(
+    () => () => {
+      cameraRequest.current++;
+      cameraStream.current?.getTracks().forEach((track) => track.stop());
+      cameraStream.current = null;
+    },
+    [],
+  );
+
   function selectFile(next?: File) {
     if (busy || !next) return;
     setError("");
@@ -53,6 +73,109 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
       return setError("This image is too large. Choose a file up to 10 MiB.");
     setFile(next);
   }
+
+  const closeCamera = useCallback(() => {
+    cameraRequest.current++;
+    cameraStream.current?.getTracks().forEach((track) => track.stop());
+    cameraStream.current = null;
+    if (video.current) video.current.srcObject = null;
+    setCameraOpen(false);
+    setCameraReady(false);
+    setCameraStarting(false);
+  }, []);
+
+  useEffect(() => {
+    if (!cameraOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeCamera();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [cameraOpen, closeCamera]);
+
+  async function openCamera() {
+    if (busy || cameraStarting) return;
+    setError("");
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      camera.current?.click();
+      return;
+    }
+
+    const requestId = ++cameraRequest.current;
+    setCameraStarting(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+      if (requestId !== cameraRequest.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      cameraStream.current = stream;
+      setCameraOpen(true);
+    } catch (cause) {
+      const cameraError = cause as DOMException;
+      setError(
+        cameraError.name === "NotAllowedError"
+          ? "Camera access was blocked. Allow camera permission or choose an image instead."
+          : "We couldn't open the camera. Check that it is available, then try again.",
+      );
+    } finally {
+      if (requestId === cameraRequest.current) setCameraStarting(false);
+    }
+  }
+
+  function capturePhoto() {
+    const currentVideo = video.current;
+    if (
+      !currentVideo ||
+      !cameraReady ||
+      !currentVideo.videoWidth ||
+      !currentVideo.videoHeight
+    )
+      return;
+
+    const maxDimension = 2400;
+    const scale = Math.min(
+      1,
+      maxDimension /
+        Math.max(currentVideo.videoWidth, currentVideo.videoHeight),
+    );
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(currentVideo.videoWidth * scale);
+    canvas.height = Math.round(currentVideo.videoHeight * scale);
+    canvas
+      .getContext("2d")
+      ?.drawImage(currentVideo, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          setError("We couldn't capture this photo. Please try again.");
+          return;
+        }
+        selectFile(
+          new File([blob], `trip-proof-${Date.now()}.jpg`, {
+            type: "image/jpeg",
+          }),
+        );
+        closeCamera();
+      },
+      "image/jpeg",
+      0.9,
+    );
+  }
+
   async function submit() {
     if (!file || inFlight.current) return;
     if (demo) {
@@ -98,7 +221,7 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
         back={pathFor("/trips", demo)}
       />
       <div className="upload-layout">
-        <section className="surface upload-panel">
+        <section className="surface upload-panel" aria-busy={busy}>
           <h2>Upload a ticket or receipt</h2>
           <p className="subtle">
             We’ll read the route and estimate your trip’s carbon impact.
@@ -145,7 +268,39 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
               else selectFile(event.dataTransfer.files[0]);
             }}
           >
-            {file && preview ? (
+            {busy ? (
+              <div
+                className="ai-extraction-state"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="ai-extraction-icon" aria-hidden="true">
+                  <BrainCircuit size={34} />
+                  <ScanLine size={18} />
+                </span>
+                <span className="eyebrow">AI trip assistant</span>
+                <h3>Extracting your trip details</h3>
+                <p>
+                  We’re reading your proof and checking the information needed
+                  to calculate its carbon impact.
+                </p>
+                <div className="ai-extraction-progress" aria-hidden="true">
+                  <span />
+                </div>
+                <div className="ai-extraction-fields" aria-hidden="true">
+                  <span>
+                    <MapPin size={15} /> Route
+                  </span>
+                  <span>
+                    <CalendarDays size={15} /> Travel date
+                  </span>
+                  <span>
+                    <Ticket size={15} /> Transport
+                  </span>
+                </div>
+                <small>Please keep this page open for a moment.</small>
+              </div>
+            ) : file && preview ? (
               <>
                 <img
                   className="proof-preview"
@@ -197,12 +352,78 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
             </Button>
             <Button
               variant="outline"
-              disabled={busy}
-              onClick={() => camera.current?.click()}
+              disabled={busy || cameraStarting}
+              onClick={() => void openCamera()}
             >
-              <Camera size={17} /> Take photo
+              {cameraStarting ? (
+                <LoaderCircle className="spin" size={17} />
+              ) : (
+                <Camera size={17} />
+              )}
+              {cameraStarting ? "Opening camera…" : "Take photo"}
             </Button>
           </div>
+          {cameraOpen &&
+            createPortal(
+            <div className="camera-backdrop">
+              <section
+                className="camera-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="camera-title"
+              >
+                <div className="camera-dialog-heading">
+                  <div>
+                    <span className="eyebrow">Travel proof</span>
+                    <h2 id="camera-title">Take a clear photo</h2>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Close camera"
+                    autoFocus
+                    onClick={closeCamera}
+                  >
+                    <X size={20} />
+                  </Button>
+                </div>
+                <div className="camera-viewport">
+                  <video
+                    ref={(node) => {
+                      video.current = node;
+                      if (node && cameraStream.current) {
+                        node.srcObject = cameraStream.current;
+                        void node
+                          .play()
+                          .catch(() => setCameraReady(false));
+                      }
+                    }}
+                    autoPlay
+                    muted
+                    playsInline
+                    onLoadedMetadata={() => setCameraReady(true)}
+                  />
+                  <span className="camera-guide" aria-hidden="true" />
+                  {!cameraReady && (
+                    <span className="camera-loading" role="status">
+                      <LoaderCircle className="spin" size={22} /> Preparing
+                      camera…
+                    </span>
+                  )}
+                </div>
+                <p>Keep the full ticket inside the frame and make text readable.</p>
+                <div className="camera-actions">
+                  <Button variant="outline" onClick={closeCamera}>
+                    Cancel
+                  </Button>
+                  <Button disabled={!cameraReady} onClick={capturePhoto}>
+                    <Camera size={18} /> Capture photo
+                  </Button>
+                </div>
+              </section>
+            </div>,
+              document.body,
+            )}
           <p className="privacy-note">
             <LockKeyhole size={14} /> Your proof stays on this device until you
             submit it.
@@ -226,8 +447,8 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
           >
             {busy ? (
               <>
-                <LoaderCircle className="spin" size={18} /> Checking your trip
-                proof…
+                <LoaderCircle className="spin" size={18} /> Extracting trip
+                data…
               </>
             ) : demo ? (
               "Preview sample result"
@@ -235,9 +456,9 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
               "Verify trip"
             )}
           </Button>
-          <p className="subtle" role="status">
+          <p className="subtle">
             {busy
-              ? "Verification may take a moment. Your proof is being checked."
+              ? "AI is extracting your route, date, and transport details."
               : demo
                 ? "Preview uses a sample trip; your image will not be uploaded."
                 : "After submission, your proof is stored privately."}

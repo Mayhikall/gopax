@@ -1,8 +1,9 @@
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { LoaderCircle } from "lucide-react";
 import { useSession } from "./session-provider";
-import { Loading } from "@/components/common";
+import { Brand } from "@/components/brand";
 
 export function AuthGuard({
   children,
@@ -30,10 +31,47 @@ export function AuthGuard({
     (!onboarding && !user.name) ||
     (onboarding && user.name)
   )
-    return (
-      <main id="main">
-        <Loading label="Checking your session…" />
-      </main>
-    );
+    return <SessionCheck />;
   return children;
+}
+
+function SessionCheck() {
+  return (
+    <main id="main" className="session-check" aria-busy="true">
+      <aside className="session-check-sidebar">
+        <Brand />
+        <div className="session-check-nav">
+          {Array.from({ length: 5 }, (_, index) => (
+            <span className="session-skeleton" key={index} />
+          ))}
+        </div>
+      </aside>
+      <section className="session-check-main">
+        <header className="session-check-topbar">
+          <span className="session-check-mobile-brand">
+            <Brand />
+          </span>
+          <span className="session-skeleton session-check-user" />
+        </header>
+        <div className="session-check-content">
+          <div className="session-check-status" role="status">
+            <span className="session-check-loader">
+              <LoaderCircle className="spin" size={22} />
+            </span>
+            <span>
+              <strong>Restoring your session</strong>
+              <small>Your journeys will be ready in a moment.</small>
+            </span>
+          </div>
+          <div className="session-skeleton session-check-title" />
+          <div className="session-skeleton session-check-hero" />
+          <div className="session-check-metrics" aria-hidden="true">
+            <span className="session-skeleton" />
+            <span className="session-skeleton" />
+            <span className="session-skeleton" />
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }

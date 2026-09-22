@@ -82,7 +82,6 @@ export function ClaimButton({
   const [pending, setPending] = useState<PendingClaim | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [recoveryHash, setRecoveryHash] = useState("");
   const locked = useRef(false);
   const currentWallet = useRef(address);
   useEffect(() => {
@@ -316,41 +315,10 @@ export function ClaimButton({
       setBusy(false);
     }
   }
-  async function recover(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (locked.current || !user || !trip.reward?.assessmentHash) return;
-    if (!/^0x[0-9a-fA-F]{64}$/.test(recoveryHash.trim())) {
-      setError(
-        "Enter a valid transaction hash: 0x followed by 64 hexadecimal characters.",
-      );
-      return;
-    }
-    const claim: PendingClaim = {
-      wallet: user.walletAddress,
-      chainId: CHAIN_ID,
-      tripId: trip.id,
-      rewardId: trip.reward.id,
-      assessmentHash: trip.reward.assessmentHash,
-      txHash: recoveryHash.trim() as Hash,
-    };
-    locked.current = true;
-    setBusy(true);
-    setError("");
-    setPending(claim);
-    try {
-      storePending(claim);
-      await monitor(claim);
-    } catch (cause) {
-      setError(errorMessage(cause));
-    } finally {
-      locked.current = false;
-      setBusy(false);
-    }
-  }
   const labels: Record<State, string> = {
     idle:
       trip.reward?.status === "FAILED"
-        ? "Recover previous claim below"
+        ? "Claim unavailable"
         : "Claim reward",
     preparing: "Preparing your claim…",
     "awaiting-wallet": "Confirm in your wallet…",
@@ -401,30 +369,6 @@ export function ClaimButton({
         <p role="alert" className="field-error">
           {error}
         </p>
-      )}
-      {!demo && !pending && state === "idle" && CONTRACTS_READY && (
-        <details className="claim-recovery">
-          <summary>Already sent a transaction?</summary>
-          <p className="subtle">
-            Paste your original transaction hash to check its receipt and sync
-            this reward. This will not send a new transaction.
-          </p>
-          <form onSubmit={recover}>
-            <label htmlFor="recovery-hash">Transaction hash</label>
-            <input
-              id="recovery-hash"
-              value={recoveryHash}
-              onChange={(event) => setRecoveryHash(event.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="0x…"
-              required
-            />
-            <Button type="submit" variant="outline" disabled={busy}>
-              Check and sync history
-            </Button>
-          </form>
-        </details>
       )}
     </div>
   );

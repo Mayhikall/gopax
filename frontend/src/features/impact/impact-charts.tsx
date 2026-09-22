@@ -1,11 +1,31 @@
+import {
+  Bike,
+  BusFront,
+  CarFront,
+  Plane,
+  TrainFront,
+  type LucideIcon,
+} from "lucide-react";
 import { number, quantity } from "@/lib/format";
-import { transports, transportLabels, type Trip } from "@/types";
+import {
+  transports,
+  transportLabels,
+  type Transport,
+  type Trip,
+} from "@/types";
 
 export type ImpactPeriod = "all" | "year" | "month" | "week" | "day";
 
-function savingsLabel(saved: number | null) {
-  if (saved === null) return "No car comparison";
-  if (saved <= 0) return "No savings";
+const transportIcons: Record<Transport, LucideIcon> = {
+  TRAIN: TrainFront,
+  BUS: BusFront,
+  MOTORCYCLE: Bike,
+  CAR: CarFront,
+  AIRPLANE: Plane,
+};
+
+function savingsLabel(saved: number) {
+  if (saved <= 0) return "0 kg saved";
   return `${quantity(saved)} kg saved`;
 }
 
@@ -28,22 +48,22 @@ export function ImpactCharts({ trips }: { trips: Trip[] }) {
           (sum, trip) => sum + (number(trip.carbonEmissionKg) ?? 0),
           0,
         ),
-        saved: comparedTrips.length
-          ? comparedTrips.reduce(
-              (sum, trip) =>
-                sum + Math.max(0, number(trip.carbonReductionKg) ?? 0),
-              0,
-            )
-          : null,
+        saved: comparedTrips.reduce(
+          (sum, trip) =>
+            sum + Math.max(0, number(trip.carbonReductionKg) ?? 0),
+          0,
+        ),
       };
     })
-    .filter((row) => row.count > 0)
     .sort((a, b) => b.emitted - a.emitted);
 
   const maxEmission = Math.max(...rows.map((row) => row.emitted), 1);
 
   return (
-    <section className="impact-charts" aria-labelledby="emissions-by-mode-title">
+    <section
+      className="impact-charts"
+      aria-labelledby="emissions-by-mode-title"
+    >
       <figure className="impact-chart">
         <figcaption>
           <h2 id="emissions-by-mode-title">CO₂ emitted by transport</h2>
@@ -51,23 +71,37 @@ export function ImpactCharts({ trips }: { trips: Trip[] }) {
         </figcaption>
 
         <div className="mode-emissions-list" role="list">
-          {rows.map((row) => (
-            <div className="mode-emissions-row" role="listitem" key={row.category}>
-              <div className="mode-emissions-heading">
-                <strong>{transportLabels[row.category]}</strong>
-                <span>{quantity(row.emitted)} kg CO₂e</span>
+          {rows.map((row) => {
+            const TransportIcon = transportIcons[row.category];
+            return (
+              <div
+                className={`mode-emissions-row${row.count === 0 ? " is-empty" : ""}`}
+                role="listitem"
+                key={row.category}
+              >
+                <div className="mode-emissions-heading">
+                  <strong>
+                    <span className="mode-emissions-icon" aria-hidden="true">
+                      <TransportIcon size={17} />
+                    </span>
+                    {transportLabels[row.category]}
+                  </strong>
+                  <span>{quantity(row.emitted)} kg CO₂e</span>
+                </div>
+                <div className="mode-emissions-track" aria-hidden="true">
+                  <span
+                    style={{ width: `${(row.emitted / maxEmission) * 100}%` }}
+                  />
+                </div>
+                <div className="mode-emissions-meta">
+                  <span>
+                    {row.count} {row.count === 1 ? "trip" : "trips"}
+                  </span>
+                  <strong>{savingsLabel(row.saved)}</strong>
+                </div>
               </div>
-              <div className="mode-emissions-track" aria-hidden="true">
-                <span style={{ width: `${(row.emitted / maxEmission) * 100}%` }} />
-              </div>
-              <div className="mode-emissions-meta">
-                <span>{row.count} {row.count === 1 ? "trip" : "trips"}</span>
-                <strong className={row.saved === null ? "muted" : ""}>
-                  {savingsLabel(row.saved)}
-                </strong>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <p className="chart-note">

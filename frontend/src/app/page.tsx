@@ -120,7 +120,9 @@ export default function LandingPage() {
               <span>From</span>
               <h2>{sample.origin}</h2>
               <div className="sample-route-line" aria-hidden="true">
-                <i /><span /><ArrowRight size={20} />
+                <i />
+                <span />
+                <ArrowRight size={20} />
               </div>
               <span>To</span>
               <h2>{sample.destination}</h2>
@@ -133,7 +135,9 @@ export default function LandingPage() {
             <div className="sample-ticket-impact">
               <div>
                 <span>Estimated CO₂ saved</span>
-                <strong>{quantity(sample.carbonReductionKg)} <small>kg</small></strong>
+                <strong>
+                  {quantity(sample.carbonReductionKg)} <small>kg</small>
+                </strong>
               </div>
               <p>Compared with the same journey by car.</p>
             </div>
@@ -141,10 +145,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="landing-explainer" aria-label="Supported travel and estimate limits">
+      <section
+        className="landing-explainer"
+        aria-label="Supported travel and estimate limits"
+      >
         <p>Train, bus, airplane, car, and motorcycle tickets are supported.</p>
         <span className="landing-footnote">
-          Estimates are not carbon offsets.<br />Rewards depend on trip eligibility.
+          Estimates are not carbon offsets.
+          <br />
+          Rewards depend on trip eligibility.
         </span>
       </section>
     </main>

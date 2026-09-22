@@ -65,7 +65,7 @@ export function Shell({
             <Brand />
           </div>
           <div className="breadcrumb">
-            Travel journal <span>/</span>{" "}
+            <span>/</span>{" "}
             {screen.startsWith("/trips/") && screen !== "/trips/new"
               ? "Trip details"
               : nav.find((n) => n.href === screen)?.label || "Home"}
