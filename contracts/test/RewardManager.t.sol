@@ -13,6 +13,7 @@ contract RewardManagerTest is Test {
     address public owner = address(0xABCD);
     address public alice = address(0x1);
     address public bob = address(0x2);
+    address public treasury = address(0x9999);
     uint256 public signerPrivateKey = 0xA11CE;
     address public signer;
 
@@ -29,6 +30,8 @@ contract RewardManagerTest is Test {
     event CarbonRewarded(
         address indexed user, bytes32 indexed assessmentHash, uint256 carbonKg, uint256 baselineKg, uint256 reward
     );
+    event TreasuryUpdated(address indexed previousTreasury, address indexed newTreasury);
+    event VoucherRedeemed(address indexed user, string voucherId, uint256 amount, uint256 timestamp);
 
     function setUp() public {
         signer = vm.addr(signerPrivateKey);
@@ -37,7 +40,7 @@ contract RewardManagerTest is Test {
         token = new GopaxToken(owner);
 
         // 2. Deploy RewardManager
-        manager = new RewardManager(address(token), owner, signer, MAX_REWARD, MIN_REDUCTION);
+        manager = new RewardManager(address(token), owner, signer, MAX_REWARD, MIN_REDUCTION, treasury);
         domainSeparator = manager.eip712DomainSeparator();
 
         // 3. Grant RewardManager permission to mint
@@ -235,5 +238,69 @@ contract RewardManagerTest is Test {
 
         vm.expectRevert(abi.encodeWithSelector(RewardManager.ReductionBelowMinimum.selector, 500, 10000));
         _claim(alice, sampleHash, carbonKg, baselineKg, 100);
+    }
+
+    function test_RedeemVoucherSuccess() public {
+        // Mint some tokens to alice first via owner mint
+        bytes32 minterRole = token.MINTER_ROLE();
+        vm.startPrank(owner);
+        token.grantRole(minterRole, owner);
+        token.mint(alice, 50 * 10 ** 18);
+        vm.stopPrank();
+
+        // Alice approves RewardManager
+        vm.prank(alice);
+        token.approve(address(manager), 20 * 10 ** 18);
+
+        // Alice redeems voucher
+        vm.expectEmit(true, false, false, true);
+        emit VoucherRedeemed(alice, "vch-transit-10k", 20 * 10 ** 18, block.timestamp);
+
+        vm.prank(alice);
+        manager.redeemVoucher("vch-transit-10k", 20 * 10 ** 18);
+
+        assertEq(token.balanceOf(alice), 30 * 10 ** 18);
+        assertEq(token.balanceOf(treasury), 20 * 10 ** 18);
+    }
+
+    function test_CannotRedeemWithZeroAmount() public {
+        vm.prank(alice);
+        vm.expectRevert(RewardManager.PriceZero.selector);
+        manager.redeemVoucher("vch-1", 0);
+    }
+
+    function test_CannotRedeemWithEmptyVoucherId() public {
+        vm.prank(alice);
+        vm.expectRevert(RewardManager.InvalidVoucherId.selector);
+        manager.redeemVoucher("", 10 * 10 ** 18);
+    }
+
+    function test_CannotRedeemWithoutApproval() public {
+        bytes32 minterRole = token.MINTER_ROLE();
+        vm.startPrank(owner);
+        token.grantRole(minterRole, owner);
+        token.mint(alice, 50 * 10 ** 18);
+        vm.stopPrank();
+
+        vm.prank(alice);
+        // Did not approve
+        vm.expectRevert();
+        manager.redeemVoucher("vch-1", 10 * 10 ** 18);
+    }
+
+    function test_OwnerCanUpdateTreasury() public {
+        address newTreasury = address(0x8888);
+        vm.expectEmit(true, true, false, false);
+        emit TreasuryUpdated(treasury, newTreasury);
+
+        vm.prank(owner);
+        manager.setTreasury(newTreasury);
+        assertEq(manager.treasury(), newTreasury);
+    }
+
+    function test_NonOwnerCannotUpdateTreasury() public {
+        vm.prank(alice);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
+        manager.setTreasury(address(0x8888));
     }
 }

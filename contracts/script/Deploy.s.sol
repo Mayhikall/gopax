@@ -12,7 +12,10 @@ contract DeployScript is Script {
         address deployer = vm.addr(deployerPrivateKey);
         address rewardSigner = vm.envAddress("REWARD_SIGNER_ADDRESS");
 
+        address treasury = vm.envOr("TREASURY_ADDRESS", deployer);
+
         console.log("Deploying Gopax contracts with deployer:", deployer);
+        console.log("Treasury address configured as:", treasury);
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -20,8 +23,8 @@ contract DeployScript is Script {
         token = new GopaxToken(deployer);
         console.log("GopaxToken deployed at:", address(token));
 
-        // 2. Deploy RewardManager (maxReward = 100, minReduction = 0)
-        manager = new RewardManager(address(token), deployer, rewardSigner, 100, 0);
+        // 2. Deploy RewardManager (maxReward = 100, minReduction = 0, treasury)
+        manager = new RewardManager(address(token), deployer, rewardSigner, 100, 0, treasury);
         console.log("RewardManager deployed at:", address(manager));
 
         // 3. Grant mint authority to RewardManager while deployer remains admin

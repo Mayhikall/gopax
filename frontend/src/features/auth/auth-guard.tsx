@@ -51,7 +51,6 @@ function SessionCheck() {
           <span className="session-check-mobile-brand">
             <Brand />
           </span>
-          <span className="session-skeleton session-check-user" />
         </header>
         <div className="session-check-content">
           <div className="session-check-status" role="status">

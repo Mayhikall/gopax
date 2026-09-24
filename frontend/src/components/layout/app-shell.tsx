@@ -9,10 +9,8 @@ import {
   Ticket,
   UserRound,
   ArrowUpRight,
-  ChevronDown,
 } from "lucide-react";
 import { Brand } from "@/components/brand";
-import { useSession } from "@/features/auth/session-provider";
 import { pathFor } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { CHAIN_ID } from "@/lib/web3/config";
@@ -33,27 +31,27 @@ export function Shell({
   screen: string;
   demo?: boolean;
 }) {
-  const { user } = useSession();
   const { chainId } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const [networkError, setNetworkError] = useState("");
   const active = (href: string) =>
     href === "/trips"
       ? screen.startsWith("/trips") && screen !== "/trips/new"
-      : screen === href;
+      : href === "/profile"
+        ? screen === "/profile" || screen.startsWith("/rewards")
+        : screen === href;
   return (
     <div className="app-layout">
       <aside className="sidebar">
         <Brand />
-        <nav aria-label="Main navigation">
+        <nav>
           {nav.map((item) => (
             <Link
               key={item.href}
+              className={`nav-item ${item.href === "/trips/new" ? "add-nav " : ""}${active(item.href) ? "active" : ""}`}
               href={pathFor(item.href, demo)}
-              className={`nav-item ${active(item.href) ? "active" : ""} ${item.href === "/trips/new" ? "add-nav" : ""}`}
-              aria-current={active(item.href) ? "page" : undefined}
             >
-              <item.icon size={20} />
+              <item.icon size={18} />
               <span>{item.label}</span>
             </Link>
           ))}
@@ -66,18 +64,11 @@ export function Shell({
           </div>
           <div className="breadcrumb">
             <span>/</span>{" "}
-            {screen.startsWith("/trips/") && screen !== "/trips/new"
-              ? "Trip details"
-              : nav.find((n) => n.href === screen)?.label || "Home"}
-          </div>
-          <div className="topbar-right">
-            <Link className="user-chip" href={pathFor("/profile", demo)}>
-              <span className="avatar">
-                {demo ? "M" : user?.name?.slice(0, 1).toUpperCase()}
-              </span>
-              <span>{demo ? "Maya" : user?.name?.split(" ")[0]}</span>
-              <ChevronDown size={14} />
-            </Link>
+            {screen.startsWith("/rewards")
+              ? "Rewards"
+              : screen.startsWith("/trips/") && screen !== "/trips/new"
+                ? "Trip details"
+                : nav.find((n) => n.href === screen)?.label || "Home"}
           </div>
         </header>
         {demo && (

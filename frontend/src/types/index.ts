@@ -75,3 +75,30 @@ export const transportLabels: Record<Transport, string> = {
   CAR: "Car",
   AIRPLANE: "Airplane",
 };
+
+export type VoucherCategory = "ALL" | "TRANSIT" | "FNB" | "UTILITY";
+
+export interface Voucher {
+  id: string;
+  title: string;
+  description: string;
+  category: "TRANSIT" | "FNB" | "UTILITY";
+  price: number;
+  stock: number;
+  code: string;
+  imageUrl?: string | null;
+  isActive?: boolean;
+}
+
+export interface VoucherRedemption {
+  id: string;
+  voucherId: string;
+  voucherTitle: string;
+  voucherDescription?: string;
+  category: string;
+  voucherCode: string;
+  amountPaid: number;
+  txHash: string;
+  createdAt: string;
+}
+

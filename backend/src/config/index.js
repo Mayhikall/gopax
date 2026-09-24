@@ -33,6 +33,7 @@ const config = {
     gopaxTokenAddress: process.env.GOPAX_TOKEN_ADDRESS,
     rewardManagerAddress: process.env.REWARD_MANAGER_ADDRESS,
     rewardSignerPrivateKey: process.env.REWARD_SIGNER_PRIVATE_KEY,
+    treasuryAddress: process.env.TREASURY_ADDRESS,
     claimAuthorizationTtlSeconds: parseInt(
       process.env.CLAIM_AUTHORIZATION_TTL_SECONDS || "900",
       10,

@@ -169,3 +169,61 @@ export function previewData(state = "default"): PreviewData {
   }));
   return { trips, impact, state, balance: "99" };
 }
+
+export const demoVouchers = [
+  {
+    id: "demo-vch-1",
+    title: "Suburban Rail Pass Discount",
+    description:
+      "Get IDR 10,000 off your next suburban train transit ticket.",
+    category: "TRANSIT" as const,
+    price: 5,
+    stock: 50,
+    code: "RAIL-PASS-10K",
+  },
+  {
+    id: "demo-vch-2",
+    title: "City Metro Transit Pass",
+    description:
+      "IDR 15,000 credit for urban underground and elevated metro lines.",
+    category: "TRANSIT" as const,
+    price: 10,
+    stock: 40,
+    code: "METRO-PASS-15K",
+  },
+  {
+    id: "demo-vch-3",
+    title: "Eco Cafe 50% Off",
+    description:
+      "Enjoy 50% off beverages and baked goods at participating sustainable cafes.",
+    category: "FNB" as const,
+    price: 8,
+    stock: 75,
+    code: "ECO-CAFE-50",
+  },
+  {
+    id: "demo-vch-4",
+    title: "Clean Energy Household Credit",
+    description:
+      "IDR 25,000 deduction on clean electricity utility bills for low-emission homes.",
+    category: "UTILITY" as const,
+    price: 15,
+    stock: 30,
+    code: "CLEAN-POWER-25K",
+  },
+];
+
+export const demoRedemptions = [
+  {
+    id: "demo-red-1",
+    voucherId: "demo-vch-1",
+    voucherTitle: "Suburban Rail Pass Discount",
+    category: "TRANSIT",
+    voucherCode: "RAIL-PASS-10K-A8F2",
+    amountPaid: 5,
+    txHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    createdAt: "2026-09-20T10:30:00Z",
+  },
+];
+
+

@@ -11,6 +11,7 @@ const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const tripRoutes = require("./routes/trip.routes");
 const impactRoutes = require("./routes/impact.routes");
+const voucherRoutes = require("./routes/voucher.routes");
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/trips", tripRoutes);
 app.use("/impact", impactRoutes);
+app.use("/vouchers", voucherRoutes);
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────
 app.use((_req, res) => {

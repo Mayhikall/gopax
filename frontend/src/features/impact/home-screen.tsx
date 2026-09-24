@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ArrowUpRight, Coins, Ticket, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ArrowUpRight, Coins, Ticket } from "lucide-react";
 import {
   Balance,
   Empty,
@@ -34,13 +33,7 @@ export function HomeScreen({ demo = false }: { demo?: boolean }) {
     <>
       <PageHeader
         title={`Hello, ${demo ? "Maya" : user?.name?.split(" ")[0] || "traveler"}.`}
-      >
-        <Button asChild className="home-add-trip">
-          <Link href={pathFor("/trips/new", demo)}>
-            <Plus size={18} /> Add a trip
-          </Link>
-        </Button>
-      </PageHeader>
+      />
       {impactQuery.isError && !demo ? (
         <ErrorState
           message={errorMessage(impactQuery.error)}

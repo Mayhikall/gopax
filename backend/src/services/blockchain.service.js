@@ -197,6 +197,88 @@ async function verifyRewardClaim({
   return receipt;
 }
 
+async function verifyVoucherRedemption({
+  txHash,
+  walletAddress,
+  voucherId,
+  expectedAmount,
+}) {
+  if (!config.blockchain.rewardManagerAddress) {
+    throw new AppError(
+      "Reward manager is not configured.",
+      503,
+      "REWARD_MANAGER_UNAVAILABLE",
+    );
+  }
+
+  const receipt = await getTransactionReceipt(txHash);
+  if (!receipt) {
+    throw new AppError(
+      "Transaction not found. Please wait for confirmation.",
+      404,
+      "TX_NOT_FOUND",
+    );
+  }
+  if (receipt.status !== "success") {
+    throw new AppError(
+      "Transaction was reverted on-chain.",
+      409,
+      "TX_REVERTED",
+    );
+  }
+
+  const managerAddress = getAddress(config.blockchain.rewardManagerAddress);
+  const expectedWallet = getAddress(walletAddress);
+  const expectedWei = BigInt(expectedAmount) * 10n ** 18n;
+
+  if (!receipt.to || !isAddressEqual(getAddress(receipt.to), managerAddress)) {
+    throw new AppError(
+      "Transaction was not sent to the RewardManager contract.",
+      409,
+      "INVALID_REDEMPTION_TX",
+    );
+  }
+
+  if (!isAddressEqual(getAddress(receipt.from), expectedWallet)) {
+    throw new AppError(
+      "Transaction sender does not match the connected wallet.",
+      409,
+      "INVALID_REDEMPTION_SENDER",
+    );
+  }
+
+  const hasExpectedEvent = receipt.logs.some((log) => {
+    if (!isAddressEqual(getAddress(log.address), managerAddress)) return false;
+    try {
+      const decoded = decodeEventLog({
+        abi: REWARD_MANAGER_ABI,
+        data: log.data,
+        topics: log.topics,
+        strict: true,
+      });
+      if (decoded.eventName !== "VoucherRedeemed") return false;
+      const args = decoded.args;
+      return (
+        isAddressEqual(getAddress(args.user), expectedWallet) &&
+        args.voucherId === voucherId &&
+        args.amount >= expectedWei
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  if (!hasExpectedEvent) {
+    throw new AppError(
+      "Transaction does not contain the expected VoucherRedeemed event.",
+      409,
+      "INVALID_REDEMPTION_EVENT",
+    );
+  }
+
+  return receipt;
+}
+
 module.exports = {
   getTokenBalance,
   getRewardPolicy,
@@ -204,4 +286,5 @@ module.exports = {
   getTransactionReceipt,
   assertAuthorizedSigner,
   verifyRewardClaim,
+  verifyVoucherRedemption,
 };

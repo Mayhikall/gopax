@@ -41,10 +41,12 @@ export function Empty({
   title = "Your next journey starts here",
   description = "Upload your first ticket to understand your travel impact.",
   demo = false,
+  action,
 }: {
   title?: string;
   description?: string;
   demo?: boolean;
+  action?: React.ReactNode;
 }) {
   return (
     <div className="empty-state">
@@ -53,11 +55,15 @@ export function Empty({
       </span>
       <h3>{title}</h3>
       <p>{description}</p>
-      <Button asChild variant="outline">
-        <Link href={pathFor("/trips/new", demo)}>
-          Add a trip <ArrowRight size={16} />
-        </Link>
-      </Button>
+      {action !== undefined ? (
+        action
+      ) : (
+        <Button asChild variant="outline">
+          <Link href={pathFor("/trips/new", demo)}>
+            Add a trip <ArrowRight size={16} />
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

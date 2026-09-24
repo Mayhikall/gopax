@@ -11,6 +11,9 @@ export const TOKEN_ADDRESS = process.env.NEXT_PUBLIC_GOPAX_TOKEN_ADDRESS as
   `0x${string}` | undefined;
 export const MANAGER_ADDRESS = process.env
   .NEXT_PUBLIC_REWARD_MANAGER_ADDRESS as `0x${string}` | undefined;
+export const TREASURY_ADDRESS = process.env.NEXT_PUBLIC_TREASURY_ADDRESS as
+  | `0x${string}`
+  | undefined;
 export const CONTRACTS_READY =
   !!TOKEN_ADDRESS &&
   isAddress(TOKEN_ADDRESS) &&
@@ -22,3 +25,4 @@ export const CONTRACTS_READY =
     process.env.NEXT_PUBLIC_CHAIN_ID === "97");
 export const explorerTx = (hash: string) =>
   `https://testnet.bscscan.com/tx/${hash}`;
+

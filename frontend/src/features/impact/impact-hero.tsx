@@ -1,13 +1,9 @@
 "use client";
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { pathFor } from "@/lib/navigation";
 import { quantity } from "@/lib/format";
+
 export function ImpactHero({
   saved,
   coverage,
-  demo = false,
   summary = false,
   total = false,
 }: {
@@ -35,12 +31,6 @@ export function ImpactHero({
               ? "Across all your verified journeys."
               : "Compared with car travel on eligible routes.")}
         </p>
-        <Button asChild variant="lime">
-          <Link href={pathFor(summary ? "/impact" : "/trips/new", demo)}>
-            {summary ? "View your impact" : "Add a trip"}{" "}
-            <ArrowUpRight size={17} />
-          </Link>
-        </Button>
       </div>
       <div className="hero-art">
         <RouteLeaf />

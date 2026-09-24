@@ -65,7 +65,10 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
     setError("");
     if (!next.size)
       return setError("This file is empty. Choose a JPG or PNG image.");
-    if (!["image/jpeg", "image/png"].includes(next.type))
+    const isJpegOrPng =
+      ["image/jpeg", "image/png"].includes(next.type) ||
+      (/\.(jpe?g|png)$/i.test(next.name) && (!next.type || next.type.startsWith("image/")));
+    if (!isJpegOrPng)
       return setError(
         "Choose a JPG or PNG image. PDF files are not supported.",
       );
@@ -97,6 +100,20 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [cameraOpen, closeCamera]);
+
+  function handleTakePhoto() {
+    if (busy) return;
+    const isMobile =
+      typeof navigator !== "undefined" &&
+      (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        (navigator.maxTouchPoints > 0 &&
+          window.matchMedia("(pointer: coarse)").matches));
+    if (isMobile) {
+      camera.current?.click();
+    } else {
+      void openCamera();
+    }
+  }
 
   async function openCamera() {
     if (busy || cameraStarting) return;
@@ -244,7 +261,7 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
             className="sr-only"
             tabIndex={-1}
             type="file"
-            accept="image/jpeg,image/png"
+            accept="image/*"
             capture="environment"
             aria-label="Take a photo of your ticket"
             disabled={busy}
@@ -353,7 +370,7 @@ export function UploadProof({ demo = false }: { demo?: boolean }) {
             <Button
               variant="outline"
               disabled={busy || cameraStarting}
-              onClick={() => void openCamera()}
+              onClick={handleTakePhoto}
             >
               {cameraStarting ? (
                 <LoaderCircle className="spin" size={17} />

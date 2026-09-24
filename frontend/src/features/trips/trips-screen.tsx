@@ -1,12 +1,11 @@
 "use client";
-import Link from "next/link";
+
 import { useState } from "react";
-import { Plus, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal } from "lucide-react";
 import {
   Empty,
   ErrorState,
   Loading,
-  pathFor,
   TripCard,
 } from "@/components/common";
 import { PageHeader } from "@/components/layout/page-header";
@@ -39,13 +38,7 @@ export function TripsScreen({
       <PageHeader
         title="Your trips"
         description="Your tickets, routes, and rewards in one travel record."
-      >
-        <Button asChild>
-          <Link href={pathFor("/trips/new", demo)}>
-            <Plus size={18} /> Add a trip
-          </Link>
-        </Button>
-      </PageHeader>
+      />
       <div className="filter-bar">
         <SlidersHorizontal size={19} aria-hidden="true" />
         <label>

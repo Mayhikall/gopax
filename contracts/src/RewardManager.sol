@@ -39,6 +39,9 @@ contract RewardManager is Ownable, ReentrancyGuard, EIP712 {
 
     address public authorizedSigner;
 
+    /// @notice Treasury address receiving tokens from voucher redemptions
+    address public treasury;
+
     /// @notice Mapping to track claimed assessment hashes for on-chain duplicate prevention
     mapping(bytes32 => bool) public claimedAssessments;
 
@@ -53,6 +56,8 @@ contract RewardManager is Ownable, ReentrancyGuard, EIP712 {
 
     event PolicyUpdated(uint256 newMaxReward, uint256 newMinReduction);
     event AuthorizedSignerUpdated(address indexed previousSigner, address indexed newSigner);
+    event TreasuryUpdated(address indexed previousTreasury, address indexed newTreasury);
+    event VoucherRedeemed(address indexed user, string voucherId, uint256 amount, uint256 timestamp);
 
     // ─── Errors ────────────────────────────────────────────────────────────────
 
@@ -65,6 +70,10 @@ contract RewardManager is Ownable, ReentrancyGuard, EIP712 {
     error InvalidSigner();
     error ClaimExpired(uint256 deadline);
     error UnauthorizedClaim();
+    error InvalidTreasury();
+    error PriceZero();
+    error InvalidVoucherId();
+    error TransferFailed();
 
     // ─── Constructor ───────────────────────────────────────────────────────────
 
@@ -74,13 +83,15 @@ contract RewardManager is Ownable, ReentrancyGuard, EIP712 {
      * @param _authorizedSigner Backend signer authorized to approve reward claims.
      * @param _maxReward Default maximum reward allowed per claim (e.g. 1000).
      * @param _minReduction Default minimum carbon reduction required (e.g. 0).
+     * @param _treasury Treasury address receiving tokens from voucher redemptions.
      */
     constructor(
         address _gopaxToken,
         address _initialOwner,
         address _authorizedSigner,
         uint256 _maxReward,
-        uint256 _minReduction
+        uint256 _minReduction,
+        address _treasury
     ) Ownable(_initialOwner) EIP712("GopaxRewardManager", "1") {
         require(_gopaxToken != address(0), "Invalid token address");
         if (_authorizedSigner == address(0)) revert InvalidSigner();
@@ -88,6 +99,7 @@ contract RewardManager is Ownable, ReentrancyGuard, EIP712 {
         authorizedSigner = _authorizedSigner;
         maxReward = _maxReward;
         minReduction = _minReduction;
+        treasury = _treasury == address(0) ? _initialOwner : _treasury;
     }
 
     // ─── External Functions ────────────────────────────────────────────────────
@@ -207,5 +219,31 @@ contract RewardManager is Ownable, ReentrancyGuard, EIP712 {
      */
     function carbonToken() external view returns (address) {
         return address(gopaxToken);
+    }
+
+    /**
+     * @notice Updates the treasury address. Restricted to owner.
+     * @param _newTreasury The new treasury wallet address.
+     */
+    function setTreasury(address _newTreasury) external onlyOwner {
+        if (_newTreasury == address(0)) revert InvalidTreasury();
+        address previous = treasury;
+        treasury = _newTreasury;
+        emit TreasuryUpdated(previous, _newTreasury);
+    }
+
+    /**
+     * @notice Redeems a digital voucher by transferring GOPAX tokens from user to treasury.
+     * @param voucherId Unique identifier string of the voucher.
+     * @param amount Amount of GOPAX tokens to pay in wei (10^18 decimals).
+     */
+    function redeemVoucher(string calldata voucherId, uint256 amount) external nonReentrant {
+        if (bytes(voucherId).length == 0) revert InvalidVoucherId();
+        if (amount == 0) revert PriceZero();
+
+        bool success = gopaxToken.transferFrom(msg.sender, treasury, amount);
+        if (!success) revert TransferFailed();
+
+        emit VoucherRedeemed(msg.sender, voucherId, amount, block.timestamp);
     }
 }

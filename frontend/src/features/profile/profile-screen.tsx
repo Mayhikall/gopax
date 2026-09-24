@@ -1,7 +1,8 @@
 "use client";
+
 import { useRouter } from "next/navigation";
-import { Coins, LogOut } from "lucide-react";
-import { Balance } from "@/components/common";
+import { Coins, LogOut, Ticket } from "lucide-react";
+import { Balance, pathFor } from "@/components/common";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/session-provider";
@@ -48,6 +49,41 @@ export function ProfileScreen({ demo = false }: { demo?: boolean }) {
               claimed.
             </p>
           </section>
+
+          <section className="surface profile-panel stack" style={{ padding: "18px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontWeight: 600,
+                  color: "var(--forest)",
+                  fontSize: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <Ticket size={17} /> Vouchers & Rewards
+              </span>
+            </div>
+            <p className="text-muted" style={{ fontSize: "13px", margin: 0 }}>
+              Exchange your earned GOPAX tokens for transit passes, partner discounts,
+              and utility credits.
+            </p>
+            <Button
+              className="full-width"
+              onClick={() => router.push(pathFor("/rewards", demo))}
+            >
+              <Ticket size={16} />
+              Browse vouchers
+            </Button>
+          </section>
+
           <Button
             variant="outline"
             onClick={() => {
