@@ -100,28 +100,30 @@ export function TripDetail({
         <div className="detail-layout">
           <div className="stack">
             <RouteTicket trip={trip} />
-            <p className="privacy-note">
-              <LockKeyhole size={15} />
-              Your original proof is stored privately.
-            </p>
-            {trip.distanceSource === "ROUTE_ESTIMATE" && (
-              <p className="subtle">
-                Route data ©{" "}
-                <a
-                  className="inline-link"
-                  href="https://www.openstreetmap.org/copyright"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  OpenStreetMap contributors
-                </a>
-                . Distance is an estimate.
+            <div className="trip-disclaimers">
+              <p className="privacy-note">
+                <LockKeyhole size={14} />
+                Your original proof is stored privately.
               </p>
-            )}
-            <p className="subtle">
-              Carbon figures are estimates. A reward is not proof of carbon
-              savings.
-            </p>
+              {trip.distanceSource === "ROUTE_ESTIMATE" && (
+                <p className="subtle">
+                  Route data ©{" "}
+                  <a
+                    className="inline-link"
+                    href="https://www.openstreetmap.org/copyright"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    OpenStreetMap contributors
+                  </a>
+                  . Distance is an estimate.
+                </p>
+              )}
+              <p className="subtle">
+                Carbon figures are estimates. A reward is not proof of carbon
+                savings.
+              </p>
+            </div>
           </div>
           <RewardPanel trip={trip} demo={demo} />
         </div>
