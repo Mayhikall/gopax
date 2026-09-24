@@ -2527,21 +2527,81 @@ svg.lucide {
     margin-left: auto;
   }
   .trip-card {
-    padding: 20px 2px;
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    align-items: center;
     gap: 10px;
+    padding: 12px 2px;
+  }
+  .trip-card > .transport-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+  }
+  .trip-card > .transport-icon svg {
+    width: 18px;
+    height: 18px;
   }
   .trip-route {
+    display: flex;
+    align-items: center;
     flex-wrap: wrap;
-    gap: 2px 6px;
+    gap: 4px 6px;
+    line-height: 1.3;
   }
   .trip-route strong {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
     max-width: 100%;
   }
-  .trip-route strong:last-child {
-    flex-basis: 100%;
+  .trip-route svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
   }
   .trip-main p {
+    margin: 2px 0 0;
     font-size: 11px;
+    line-height: 1.3;
+  }
+  .trip-statuses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .trip-statuses .badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    line-height: 1.3;
+  }
+  .trip-numbers {
+    grid-column: 3;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    text-align: right;
+    white-space: nowrap;
+    gap: 2px;
+  }
+  .trip-numbers .reward-text {
+    order: -1;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.2;
+  }
+  .trip-numbers > strong {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+    line-height: 1.2;
+  }
+  .trip-arrow {
+    display: none;
   }
   .page-heading {
     margin-bottom: 24px;
