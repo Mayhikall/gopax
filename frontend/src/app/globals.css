@@ -145,10 +145,15 @@ a {
   font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.04em;
+  user-select: none;
+  cursor: default;
 }
 
 .brand img {
   display: block;
+  height: 32px;
+  width: auto;
+  object-fit: contain;
 }
 .brand-dot {
   color: var(--primary);

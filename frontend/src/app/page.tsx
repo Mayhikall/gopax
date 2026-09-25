@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
@@ -17,8 +17,18 @@ const sample = demoTrips[0];
 
 export default function LandingPage() {
   const router = useRouter();
-  const { user, login, busy } = useSession();
+  const { user, ready, login, busy } = useSession();
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!ready || !user) return;
+    const next = safeDestination(
+      new URLSearchParams(window.location.search).get("next"),
+    );
+    router.replace(
+      user.name ? next : `/onboarding?next=${encodeURIComponent(next)}`,
+    );
+  }, [ready, user, router]);
 
   async function signIn() {
     setError("");
@@ -27,7 +37,7 @@ export default function LandingPage() {
       const next = safeDestination(
         new URLSearchParams(window.location.search).get("next"),
       );
-      router.push(
+      router.replace(
         signedInUser.name
           ? next
           : `/onboarding?next=${encodeURIComponent(next)}`,
@@ -35,6 +45,10 @@ export default function LandingPage() {
     } catch (cause) {
       setError(errorMessage(cause));
     }
+  }
+
+  if (ready && user) {
+    return null;
   }
 
   return (

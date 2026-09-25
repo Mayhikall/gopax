@@ -1,14 +1,13 @@
-import Link from "next/link";
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" className="brand" aria-label="Gopax home">
-      <img src="/logo.svg" width="38" height="38" alt="" />
+    <div className="brand" aria-label="Gopax">
+      <img src="/logo-gopax.png" width="48" height="32" alt="" />
       {!compact && (
         <span>
           gopax<span className="brand-dot">.</span>
         </span>
       )}
-    </Link>
+    </div>
   );
 }
 export function RouteArt({ small = false }: { small?: boolean }) {

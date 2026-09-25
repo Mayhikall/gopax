@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: { default: "Gopax", template: "%s · Gopax" },
   description:
     "Upload a travel ticket to save the route and view estimated emissions. Eligible trips can receive GOPAX rewards.",
-  icons: { icon: "/logo.svg" },
+  icons: { icon: "/logo-gopax.png" },
 };
 export default function RootLayout({
   children,
