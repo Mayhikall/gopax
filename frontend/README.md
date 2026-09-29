@@ -1,81 +1,115 @@
-# Gopax frontend
+# Gopax Frontend
 
-Implementasi struktur bagian 7 `frontend-plan-gopax.md`: Next.js App Router, TypeScript, Tailwind CSS dengan semantic CSS tokens, shadcn-style Button, TanStack Query, wagmi, viem, dan RainbowKit. Perombakan UI menggunakan skill `antislop`, `antislop-ui`, `antislop-copywriting`, `antislop-human`, dan `antislop-layoutmobile`. Arah visual jurnal perjalanan, alasan keputusan, dan motion tercatat di [DESIGN.md](DESIGN.md).
+Frontend Gopax dibangun dengan Next.js App Router, React, TypeScript, Tailwind CSS, TanStack Query, RainbowKit, wagmi, dan viem. Aplikasi menyediakan autentikasi wallet, upload bukti perjalanan, dashboard impact, claim GOPAX, serta penukaran GOPAX dengan voucher.
+
+Dokumentasi project secara keseluruhan tersedia di [README utama](../README.md).
+
+## Fitur
+
+- Connect wallet dan Sign-In with Ethereum (SIWE).
+- Onboarding dan profil pengguna.
+- Upload tiket/struk JPEG atau PNG maksimum 10 MiB.
+- Daftar, filter, dan detail perjalanan.
+- Estimasi emisi, perbandingan, dan dashboard impact.
+- Simulasi, pengiriman, dan pemulihan transaksi claim GOPAX.
+- Saldo GOPAX dari wallet.
+- Katalog voucher, approve token, redemption, dan riwayat voucher.
+- Preview fixture tanpa wallet atau backend.
 
 ## Menjalankan
 
-Dari direktori `frontend`:
-
-```sh
+```bash
+cd frontend
 npm ci
+cp .env.example .env.local
 npm run dev
 ```
 
-Frontend dikunci ke `http://localhost:3000`. Jika port tersebut sedang digunakan proses lain, hentikan proses itu sebelum menjalankan Gopax. Pilih **View sample journeys**, atau buka `http://localhost:3000/preview`. Preview tidak memerlukan wallet maupun backend. Semua angka preview adalah fixture yang dilabeli; file yang dipilih di preview tidak diunggah, dan tombol claim tidak mengirim transaksi.
+Buka `http://localhost:3000`. Frontend menggunakan port `3000` secara eksplisit.
 
-Pilihan **Preview state** menyediakan akun kosong, processing, assessment unavailable, no reward, no comparison, negative comparison, zero savings, small values, long route names, loading, dan service error. Gunakan pilihan tersebut pada Home/Impact/Trips atau detail sample sesuai state yang ingin dilihat. Navigasi antarhalaman kembali ke dataset default.
+## Konfigurasi
 
-Preview tersedia otomatis pada development. Pada production, `/preview` mengembalikan not found kecuali `NEXT_PUBLIC_ENABLE_PREVIEW=true` disetel secara eksplisit saat build.
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_CHAIN_ID=97
+NEXT_PUBLIC_GOPAX_TOKEN_ADDRESS=0x...
+NEXT_PUBLIC_REWARD_MANAGER_ADDRESS=0x...
+NEXT_PUBLIC_TREASURY_ADDRESS=0x...
+NEXT_PUBLIC_RPC_URL=https://bsc-testnet-dataseed.bnbchain.org
+NEXT_PUBLIC_SIWE_DOMAIN=localhost
+NEXT_PUBLIC_SIWE_URI=http://localhost:3000
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
+NEXT_PUBLIC_ENABLE_PREVIEW=false
+```
 
-## Koneksi live
+Semua variable `NEXT_PUBLIC_*` dapat dilihat browser. Jangan menyimpan private key atau secret di frontend. Address token, manager, dan treasury harus berasal dari deployment yang sama.
 
-Salin `.env.example` ke `.env.local`, lalu cocokkan nilai dengan backend/deployment yang digunakan:
+## Halaman
 
-- `NEXT_PUBLIC_API_URL`: URL backend; contoh lokal `http://localhost:3001`.
-- `NEXT_PUBLIC_CHAIN_ID`: `97`, sesuai BSC Testnet yang didukung MVP.
-- `NEXT_PUBLIC_GOPAX_TOKEN_ADDRESS` dan `NEXT_PUBLIC_REWARD_MANAGER_ADDRESS`: alamat deployment yang dipercaya.
-- `NEXT_PUBLIC_RPC_URL`: endpoint RPC BSC Testnet.
-- `NEXT_PUBLIC_SIWE_DOMAIN` dan `NEXT_PUBLIC_SIWE_URI`: sama dengan konfigurasi SIWE backend dan origin frontend. Untuk contoh env, buka frontend melalui `localhost`, bukan `127.0.0.1`.
-- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`: opsional; tanpa nilai ini frontend menggunakan injected wallet. Isi untuk koneksi WalletConnect/mobile.
+| Route | Fungsi | Session |
+| --- | --- | --- |
+| `/` | Landing, connect wallet, dan SIWE | Tidak |
+| `/onboarding` | Melengkapi profil | Ya |
+| `/home` | Ringkasan perjalanan dan reward | Ya |
+| `/impact` | Agregat impact dan transport mix | Ya |
+| `/trips` | Daftar dan filter perjalanan | Ya |
+| `/trips/new` | Upload bukti perjalanan | Ya |
+| `/trips/[id]` | Detail assessment dan claim | Ya |
+| `/rewards` | Katalog dan riwayat voucher | Ya |
+| `/profile` | Profil, wallet, saldo, dan network | Ya |
+| `/preview` | Sample journey tanpa backend/wallet | Tidak |
 
-Restart dev server setelah mengubah environment. Semua `NEXT_PUBLIC_*` terlihat oleh browser. Konfigurasi API kosong menghasilkan pesan setup; kontrak yang tidak valid menonaktifkan saldo/claim. Koneksi live tidak beralih otomatis ke fixture.
+JWT hanya disimpan di memory. Refresh halaman memerlukan sign-in ulang. Pergantian wallet, disconnect, atau respons `401` membersihkan session dan query cache.
 
 ## Struktur
 
 ```text
 src/
-  app/                    landing, onboarding, protected routes, preview, errors
-  components/
-    ui/                   Button primitive
-    layout/               shell, page header, preview context
-    brand/                wordmark dan route SVG
-    feedback/             loading, empty, error
-    common.tsx            status/transport UI dan shared exports
+  app/                    routes, layout, providers, preview, error pages
+  components/             UI, layout, brand, dan feedback
   features/
-    auth/                 session memory, SIWE, route guard, safe redirects
-    trips/                list/query, filter, upload, route ticket/detail
-    impact/               Home, all-time Impact, metrics, transport mix
-    rewards/              balance, assessment, claim dan receipt recovery
-    profile/              form, wallet identity, network/disconnect
+    auth/                 SIWE, session, guard, safe redirect
+    trips/                upload, query, list, dan detail
+    impact/               home, metrics, transport mix
+    rewards/              balance, claim recovery, dan voucher
+    profile/              profile, wallet, network, disconnect
   lib/
-    api/                  authenticated request/error handling
-    web3/                 config dan ABI dari artifacts backend
-    format.ts             nullable decimal, kalender, wallet formatting
-  types/                  DTO/domain types
-  fixtures/               sample journeys khusus preview
+    api/                  authenticated API client
+    web3/                 wagmi config dan ABI
+  fixtures/               data khusus preview
+  types/                  DTO dan domain types
 ```
 
-`/home`, `/impact`, `/trips`, `/trips/new`, `/trips/[id]`, dan `/profile` dilindungi session JWT dan onboarding. JWT hanya berada di memory; refresh membutuhkan sign-in kembali dan mempertahankan tujuan internal yang valid. Pergantian wallet/disconnect/401 membersihkan cache, membatalkan request session lama, dan menolak respons yang terlambat.
+## Integrasi trip dan claim
 
-## Perilaku integrasi
+Upload menggunakan multipart field `proof`. Hanya satu JPEG/PNG maksimum 10 MiB yang diterima. Request `POST` tidak diulang otomatis karena server mungkin sudah menyimpan perjalanan ketika client mengalami timeout.
 
-Upload memakai multipart field `proof`, satu JPEG/PNG maksimal 10 MiB. Preview file menggunakan object URL dengan cleanup ketika diganti/dilepas. POST tidak diulang otomatis. Respons 201/202 membuka detail dengan ID dari backend; alasan processing sementara disimpan dalam query cache. Timeout menampilkan tautan untuk memeriksa Trips karena server mungkin sudah menyimpan hasil.
+Nilai reward, emission, comparison, dan impact berasal dari backend. Nilai `null` tidak ditampilkan sebagai nol. Saldo GOPAX dibaca melalui `balanceOf` dan berbeda dari total reward available atau claimed.
 
-Reward, emitted, saved, comparison, serta agregat impact berasal dari backend. Nilai null tidak diubah menjadi nol. Status trip dan reward ditampilkan terpisah. Saldo GOPAX dibaca melalui `balanceOf` dan `decimals` token; saldo bukan total available/claimed. Chart transport mempunyai label jumlah trip sebagai alternatif tekstual.
+Sebelum claim, frontend memeriksa wallet, recipient, chain, address contract, assessment, deadline, policy, dan claimed state. Transaksi disimulasikan sebelum wallet diminta menandatangani. Konteks transaksi disimpan untuk menangani reload, replacement transaction, receipt berhasil tetapi API gagal, dan sinkronisasi ulang history.
 
-Claim memeriksa recipient, assessment, reward ID, chain, manager, token, deadline, policy dan claimed state. Enam argumen diteruskan dari authorization backend tanpa menghitung ulang emisi atau menggandakan konversi token. Transaksi disimulasikan sebelum meminta tanda tangan, mengikuti [pola simulateContract viem](https://viem.sh/docs/contract/simulateContract).
+## Integrasi voucher
 
-Sesudah broadcast, frontend menyimpan `{ wallet, chainId, tripId, rewardId, assessmentHash, txHash }`. Receipt dan event reward yang cocok diperlukan sebelum confirmation API. Replacement hash diperbarui; transaksi cancelled/reverted tidak dianggap berhasil. Jika receipt berhasil tetapi API gagal, **Sync history** hanya mengulang confirmation. Sesudah refresh, **Check transaction** melanjutkan pemeriksaan hash tersimpan. **Already sent a transaction?** menerima hash lama untuk recovery jika storage lokal hilang. Backend tetap melakukan validasi authoritative.
+Jika allowance belum cukup, pengguna lebih dulu memberi allowance GOPAX kepada `RewardManager`. Setelah `redeemVoucher(voucherId, amount)` berhasil, frontend mengirim `voucherId` dan `txHash` ke backend. Backend memverifikasi event, wallet, voucher, serta jumlah sebelum mengeluarkan kode.
+
+`NEXT_PUBLIC_TREASURY_ADDRESS` harus cocok dengan treasury deployment. Katalog development berasal dari migration backend dan bukan benefit merchant production.
+
+## Preview
+
+`http://localhost:3000/preview` menampilkan sample journey dan kondisi UI tanpa koneksi live. File tidak diunggah dan tombol claim/redemption tidak mengirim transaksi. Preview selalu tersedia pada development; production memerlukan `NEXT_PUBLIC_ENABLE_PREVIEW=true` saat build.
 
 ## Verifikasi
 
-```sh
+```bash
 npm run lint
 npm run typecheck
 npm run build
-npm run abi:sync   # hanya ketika ABI artifacts backend berubah
 ```
 
-Pemeriksaan visual/interaksi dan batas pengujian dicatat di [UI-REVIEW.md](UI-REVIEW.md). Production build dapat menampilkan warning dependensi native opsional MetaMask (`@react-native-async-storage/async-storage`); package tersebut berasal dari dependency tree wallet, bukan modul yang dipanggil layar aplikasi.
+Setelah interface contract berubah:
 
-Pengujian end-to-end dengan backend aktif dan wallet BSC Testnet tetap diperlukan untuk SIWE, onboarding/profile live, upload/provider retry live, balance RPC, gas rejection, pending/replacement/reload, dan confirmation recovery. Sesi implementasi ini tidak mengirim transaksi blockchain.
+```bash
+npm run abi:sync
+```
+
+Pengujian end-to-end tetap perlu dilakukan dengan backend, database, provider AI, wallet, dan BSC Testnet aktif.
