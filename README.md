@@ -4,8 +4,6 @@
 
 Gopax adalah consumer application berbasis Web3 yang membantu pengguna memahami estimasi emisi perjalanannya. Pengguna mengunggah tiket atau struk perjalanan, sistem membaca bukti tersebut dengan vision AI, menghitung estimasi emisi menggunakan aturan deterministik, lalu memberikan reward GOPAX untuk perjalanan yang memenuhi syarat. GOPAX dapat ditukar dengan voucher melalui transaksi di BNB Smart Chain Testnet.
 
-> Gopax menampilkan **estimasi**, bukan pengukuran emisi aktual atau kredit karbon tersertifikasi. Reward adalah insentif penggunaan aplikasi.
-
 ## Daftar isi
 
 - [Mengapa Gopax](#mengapa-gopax)
@@ -404,16 +402,6 @@ Deployment aktif MVP berada di **BNB Smart Chain Testnet (chain ID 97)**.
 | RewardManager | [`0x3efD305A3D71A9EB5835acB295990ad8fb39661F`](https://testnet.bscscan.com/address/0x3efD305A3D71A9EB5835acB295990ad8fb39661F) |
 | Treasury | [`0xdc22a080D041F4DABdf12fe89Fa45cC898Ab495b`](https://testnet.bscscan.com/address/0xdc22a080D041F4DABdf12fe89Fa45cC898Ab495b) |
 
-Deployment transactions:
-
-- [GopaxToken deployment](https://testnet.bscscan.com/tx/0xe55af9d4812b837447e586a32f1c3f467c92db0a1940e52805faeb8eccbe11c2)
-- [RewardManager deployment](https://testnet.bscscan.com/tx/0x2a3d18fa99b759d7802e0dae20d112eeb6c6dfcc468775d2e573ce2aad94b96e)
-- [MINTER_ROLE grant](https://testnet.bscscan.com/tx/0x29eb6f28cf4d36ace1f48b01cc61649344172c26be5a6d792adc3419c1595a41)
-
-Konfigurasi on-chain telah diperiksa melalui RPC: token bernama `Gopax` dengan simbol `GOPAX`, manager menunjuk token di atas, treasury cocok dengan tabel, dan reward policy aktif adalah maksimum 100 GOPAX dengan minimum reduction 0.
-
-> Address tersebut hanya berlaku pada testnet. Selalu cocokkan chain ID dan address sebelum mengirim transaksi.
-
 ## API
 
 Base URL lokal: `http://localhost:5000`.
@@ -446,7 +434,10 @@ Authorization: Bearer <jwt>
 
 ### Smart contracts
 
-```bash
+```bashDeployment transactions:
+
+- [GopaxToken deployment](https://testnet.bscscan.com/tx/0xe55af9d4812b837447e586a32f1c3f467c92db0a1940e52805faeb8eccbe11c2)
+- [RewardManager deployment](https://testnet.bscscan.com/tx/0x2a3d18fa99b759d7802e0dae20d112eeb6c6dfcc468775d2e573ce2aad94b96e)
 cd contracts
 forge test -vvv
 ```
