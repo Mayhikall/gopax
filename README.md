@@ -239,21 +239,12 @@ Deployment menghasilkan `GOPAX_TOKEN_ADDRESS` dan `REWARD_MANAGER_ADDRESS`. Scri
 
 ### 4. Konfigurasikan dan jalankan backend
 
-Salin hasil deployment ke `backend/.env`. Untuk setup lokal dengan backend pada port default:
-
-```env
-PORT=5000
-CORS_ORIGIN=http://localhost:3000
-SIWE_DOMAIN=localhost
-SIWE_URI=http://localhost:3000
-
-RPC_URL=https://bsc-testnet-dataseed.bnbchain.org
-GOPAX_TOKEN_ADDRESS=0x...
-REWARD_MANAGER_ADDRESS=0x...
-REWARD_SIGNER_PRIVATE_KEY=0x...
-TREASURY_ADDRESS=0x...
-CLAIM_AUTHORIZATION_TTL_SECONDS=900
-```
+File `backend/.env` sudah dibuat dari `backend/.env.example` pada langkah 2.
+Lengkapi seluruh placeholder di file tersebut. Setelah contract selesai di-deploy,
+perbarui `GOPAX_TOKEN_ADDRESS`, `REWARD_MANAGER_ADDRESS`, `TREASURY_ADDRESS`,
+dan `RPC_URL`. Isi `REWARD_SIGNER_PRIVATE_KEY` dengan private key yang address-nya
+sama dengan `REWARD_SIGNER_ADDRESS` saat deployment. Jangan pernah commit file
+`.env` atau membagikan private key tersebut.
 
 Alamat treasury backend dan frontend harus sama dengan `treasury()` pada `RewardManager`. Jalankan API:
 
@@ -301,6 +292,7 @@ Buka `http://localhost:3000`. Gunakan `http://localhost:3000/preview` untuk meli
 | Variable | Fungsi |
 | --- | --- |
 | `PORT` | Port Express, default `5000` |
+| `NODE_ENV` | Mode runtime, misalnya `development` atau `production` |
 | `DB_*` | Koneksi PostgreSQL |
 | `JWT_SECRET` | Secret untuk session JWT |
 | `JWT_EXPIRES_IN` | Masa berlaku JWT |
@@ -320,6 +312,8 @@ Buka `http://localhost:3000`. Gunakan `http://localhost:3000/preview` untuk meli
 | `CORS_ORIGIN` | Origin frontend yang diizinkan |
 | `GEOCODING_PROVIDER` | `photon` atau `nominatim` |
 | `PHOTON_BASE_URL`, `NOMINATIM_BASE_URL`, `OSRM_BASE_URL` | Distance providers |
+| `NOMINATIM_USER_AGENT` | Identitas aplikasi saat menggunakan Nominatim |
+| `NETWORK_AUTO_SELECT_FAMILY` | Workaround pemilihan address family oleh Node; ubah ke `false` hanya jika diperlukan |
 
 ### Frontend
 
