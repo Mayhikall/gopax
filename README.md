@@ -182,16 +182,16 @@ gopax/
 ### 1. Clone dan install dependency
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Mayhikall/gopax.git
 cd gopax
 
 cd backend
 npm ci
 
-cd ../frontend
+cd frontend
 npm ci
 
-cd ../contracts
+cd contracts
 forge install
 ```
 
