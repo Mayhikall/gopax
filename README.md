@@ -92,7 +92,7 @@ sequenceDiagram
 - Perhitungan emisi deterministik di backend; AI tidak menentukan faktor emisi atau jumlah reward.
 - Perbandingan emisi terhadap mobil untuk perjalanan bus dan kereta yang didukung.
 - Dashboard impact, transport mix, daftar perjalanan, filter, dan detail assessment.
-- Token GOPAX ERC-20 dengan supply maksimum 10 juta GOPAX.
+- Token GOPAX BEP-20 dengan supply maksimum 10 juta GOPAX.
 - Claim reward dengan EIP-712, deadline, policy on-chain, dan pencegahan klaim ganda.
 - Pemulihan status claim ketika transaksi berhasil tetapi sinkronisasi API tertunda.
 - Katalog voucher, pembayaran token ke treasury, verifikasi event, anti-replay transaction hash, dan riwayat voucher pengguna.
@@ -345,33 +345,98 @@ Backend memakai faktor yang tersimpan di kode dan menghitung emisi secara determ
 | Mobil | 0.235 kg CO₂e/km, asumsi satu pengendara |
 | Pesawat | 0.120 / 0.089 / 0.078 kg CO₂e/passenger-km menurut rentang jarak |
 
-Rumus dasar:
+### Perhitungan impact
+
+Jarak diambil dari bukti jika tercantum dan valid. Jika tidak ada, backend
+mengestimasi rute darat melalui penyedia geocoding/routing atau memakai jarak
+great-circle antarkode bandara untuk pesawat.
 
 ```text
-estimated emission = distance × emission factor
+estimasi emisi = jarak × faktor emisi moda
+
+baseline mobil = jarak × 0.235
+estimasi pengurangan = baseline mobil - estimasi emisi
+persentase pengurangan = estimasi pengurangan / baseline mobil × 100%
 ```
 
-Perbandingan terhadap mobil hanya dibuat untuk bus dan kereta. Nilai perbandingan yang tidak tersedia disimpan sebagai `null`, bukan nol.
+Baseline dan estimasi pengurangan hanya dihitung untuk bus dan kereta, karena
+keduanya dibandingkan dengan perjalanan mobil pada rute yang sama. Untuk mobil,
+sepeda motor, dan pesawat, nilai baseline, pengurangan, dan persentasenya disimpan
+sebagai `null`, bukan nol.
+
+Contoh perjalanan bus sejauh 10 km:
+
+```text
+estimasi emisi bus = 10 × 0.030 = 0.30 kg CO₂e
+baseline mobil = 10 × 0.235 = 2.35 kg CO₂e
+estimasi pengurangan = 2.35 - 0.30 = 2.05 kg CO₂e
+persentase pengurangan = 2.05 / 2.35 × 100% ≈ 87.23%
+```
+
+Dashboard impact mengagregasi trip berstatus `VERIFIED`:
+
+- total perjalanan adalah jumlah seluruh trip terverifikasi;
+- total emisi adalah penjumlahan estimasi emisi seluruh trip;
+- total estimasi pengurangan hanya menjumlahkan nilai positif dari trip bus dan
+  kereta yang memiliki baseline;
+- jika belum ada trip yang dapat dibandingkan, total estimasi pengurangan
+  ditampilkan sebagai tidak tersedia, bukan `0`; dan
+- komposisi moda dihitung dari jumlah trip terverifikasi per kategori.
+
+Angka impact adalah estimasi berbasis faktor emisi, bukan pengukuran emisi aktual,
+kredit karbon, atau laporan lingkungan tersertifikasi.
 
 ### Kebijakan reward MVP
+
+Reward hanya dibuat untuk trip terverifikasi yang mendapat keputusan AI `REWARD`.
+Setelah syarat tersebut terpenuhi, backend menghitung reward dari **intensitas
+emisi moda**, bukan dari total emisi atau jarak perjalanan.
 
 ```text
 efficiency score = clamp(1 - emission intensity / 0.235, 0, 1)
 reward = 10 + round(90 × efficiency score)
 ```
 
-- Base reward: 10 GOPAX.
-- Efficiency bonus: 0–90 GOPAX.
-- Maksimum: 100 GOPAX per assessment.
-- Tidak ada distance multiplier; perjalanan lebih jauh tidak otomatis mendapat reward lebih besar.
-- Semua kategori dapat dinilai, tetapi harus memiliki keputusan AI `REWARD`, trip terverifikasi, dan lolos validasi backend/on-chain.
-- Reward adalah skor insentif berdasarkan intensitas, bukan klaim avoided emissions.
+Komponen rumus:
+
+- `emission intensity` adalah faktor emisi moda yang digunakan backend;
+- `0.235` adalah faktor referensi mobil dengan asumsi satu pengendara;
+- `clamp(..., 0, 1)` membatasi skor agar selalu berada pada rentang 0–1;
+- `10` adalah base reward untuk trip yang eligible;
+- `90 × efficiency score` adalah bonus efisiensi, lalu dibulatkan ke token
+  terdekat; dan
+- hasil akhir berada pada rentang 10–100 GOPAX per assessment.
+
+Contoh untuk bus dengan intensitas `0.030`:
+
+```text
+efficiency score = clamp(1 - 0.030 / 0.235, 0, 1) ≈ 0.872
+reward = 10 + round(90 × 0.872) = 89 GOPAX
+```
+
+Dengan faktor emisi MVP saat ini, hasil per moda adalah:
+
+| Moda | Intensitas yang digunakan | Reward |
+| --- | ---: | ---: |
+| Kereta | 0.01219 | 95 GOPAX |
+| Bus | 0.030 | 89 GOPAX |
+| Sepeda motor | 0.082 | 69 GOPAX |
+| Mobil | 0.235 | 10 GOPAX |
+| Pesawat jarak pendek | 0.120 | 54 GOPAX |
+| Pesawat jarak menengah | 0.089 | 66 GOPAX |
+| Pesawat jarak jauh | 0.078 | 70 GOPAX |
+
+Tidak ada pengali jarak. Dua perjalanan darat dengan moda dan faktor emisi yang
+sama mendapat reward yang sama meskipun jaraknya berbeda. Khusus pesawat, jarak
+menentukan tier faktor emisi sehingga reward dapat berbeda antar-tier. Reward ini
+adalah skor insentif berdasarkan intensitas, bukan nilai pengurangan emisi, kredit
+karbon, atau alasan untuk melakukan perjalanan tambahan.
 
 ## Smart contracts
 
 ### `GopaxToken.sol`
 
-- ERC-20 bernama `Gopax` dengan simbol `GOPAX` dan 18 decimals.
+- BEP-20 bernama `Gopax` dengan simbol `GOPAX` dan 18 decimals.
 - Hanya address dengan `MINTER_ROLE` yang dapat mint.
 - Maximum total supply: 10,000,000 GOPAX.
 - Deployment script memberikan `MINTER_ROLE` kepada `RewardManager`.
