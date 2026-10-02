@@ -29,12 +29,17 @@ export default function LandingPage() {
     );
   }, [ready, user, router]);
 
-  function signIn(method: "google" | "wallet") {
+  const [signingIn, setSigningIn] = useState<"google" | "wallet" | null>(null);
+
+  async function signIn(method: "google" | "wallet") {
     setError("");
+    setSigningIn(method);
     try {
-      login(method);
+      await login(method);
     } catch (cause) {
       setError(errorMessage(cause));
+    } finally {
+      setSigningIn(null);
     }
   }
 
@@ -61,7 +66,9 @@ export default function LandingPage() {
               <span className="google-icon-wrapper" aria-hidden="true">
                 <img src="/google.svg" alt="" width={16} height={16} />
               </span>
-              <span>{busy ? "Opening Privy…" : "Continue with Google"}</span>
+              <span>
+                {signingIn === "google" ? "Opening Google…" : "Continue with Google"}
+              </span>
             </Button>
             <Button
               variant="outline"
@@ -69,7 +76,9 @@ export default function LandingPage() {
               disabled={busy}
             >
               <Wallet size={18} />
-              <span>Connect wallet</span>
+              <span>
+                {signingIn === "wallet" ? "Connecting…" : "Connect wallet"}
+              </span>
             </Button>
             {(process.env.NODE_ENV !== "production" ||
               process.env.NEXT_PUBLIC_ENABLE_PREVIEW === "true") && (

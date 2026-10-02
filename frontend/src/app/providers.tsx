@@ -119,12 +119,20 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             showWalletLoginFirst: false,
             walletChainType: "ethereum-only",
             walletList: [
+              "detected_ethereum_wallets",
               "detected_wallets",
+              "bitget_wallet",
               "metamask",
-              "wallet_connect",
               "coinbase_wallet",
+              "wallet_connect",
             ],
           },
+          ...(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+            ? {
+                walletConnectCloudProjectId:
+                  process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+              }
+            : {}),
         }}
       >
         <QueryClientProvider client={queryClient}>
