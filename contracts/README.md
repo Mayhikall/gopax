@@ -1,156 +1,60 @@
 # Gopax Smart Contracts
 
-Smart contract Gopax dibangun dengan Solidity, Foundry, dan OpenZeppelin untuk BNB Smart Chain Testnet.
+The contracts use Solidity, Foundry, and OpenZeppelin on BNB Smart Chain Testnet.
 
-- `GopaxToken.sol`: ERC-20/BEP-20 reward token dengan minting berbasis role dan maximum supply.
-- `RewardManager.sol`: verifikasi claim EIP-712, reward policy, duplicate prevention, dan pembayaran voucher ke treasury.
+- `GopaxToken.sol`: ERC-20/BEP-20 reward token with role-based minting, a 10,000,000 GOPAX cap, 18 decimals, and EIP-2612 permit.
+- `RewardManager.sol`: EIP-712 claims, reward policy, duplicate prevention, and voucher payments to treasury.
 
-Dokumentasi project secara keseluruhan tersedia di [README utama](../README.md).
+## Active deployment
 
-## Live deployment
-
-Network: **BNB Smart Chain Testnet**, chain ID `97`.
-
-| Komponen | Address |
+| Component | Address |
 | --- | --- |
-| GopaxToken | [`0xeeCed31a90cB86eC9dEde5AC3e7100d936E18BfA`](https://testnet.bscscan.com/address/0xeeCed31a90cB86eC9dEde5AC3e7100d936E18BfA) |
-| RewardManager | [`0x3efD305A3D71A9EB5835acB295990ad8fb39661F`](https://testnet.bscscan.com/address/0x3efD305A3D71A9EB5835acB295990ad8fb39661F) |
+| GopaxToken | [`0x518fC1a3EFc6806F0B46C25CbC21a27C216597F5`](https://testnet.bscscan.com/address/0x518fC1a3EFc6806F0B46C25CbC21a27C216597F5) |
+| RewardManager | [`0xba6aa6E7685563C56225d085c6cD71a1Ea1a6B4F`](https://testnet.bscscan.com/address/0xba6aa6E7685563C56225d085c6cD71a1Ea1a6B4F) |
 | Treasury | [`0xdc22a080D041F4DABdf12fe89Fa45cC898Ab495b`](https://testnet.bscscan.com/address/0xdc22a080D041F4DABdf12fe89Fa45cC898Ab495b) |
 
-Detail transaksi deployment tersedia pada bagian [live deployment README utama](../README.md#live-deployment). Address ini hanya untuk testnet.
+These addresses are testnet-only. Canonical Foundry artifacts are under `broadcast/`; `deployments/bsc-testnet.json` is a manually maintained summary of this active deployment.
 
-## Contracts
+## Behavior
 
-### GopaxToken
+`RewardManager` verifies signatures from `authorizedSigner`, binds them to all claim fields, rejects expired/modified/duplicate claims, enforces `maxReward` and `minReduction`, and mints to the claimant. It transfers redeemed GOPAX to `treasury`; the owner can update policy, signer, and treasury.
 
-- Nama `Gopax`, simbol `GOPAX`, dan 18 decimals.
-- Maximum supply 10,000,000 GOPAX.
-- Mint hanya dapat dilakukan address dengan `MINTER_ROLE`.
-- Deployment script memberikan `MINTER_ROLE` kepada `RewardManager`; deployer tetap menjadi token admin.
+Use `redeemVoucherWithPermit` for atomic EIP-2612 permit and transfer without a separate `approve`. Legacy `redeemVoucher` remains available.
 
-### RewardManager
-
-Untuk claim reward, manager:
-
-- memverifikasi signature EIP-712 dari `authorizedSigner`;
-- mengikat signature ke recipient, assessment hash, carbon, baseline, reward, dan deadline;
-- menolak authorization kedaluwarsa atau dimodifikasi;
-- mencegah assessment hash diklaim dua kali;
-- menerapkan `maxReward` dan `minReduction`; dan
-- mint GOPAX kepada wallet pengirim claim.
-
-Untuk voucher, manager memindahkan GOPAX pengguna ke `treasury` dengan `transferFrom` dan menerbitkan event `VoucherRedeemed`. Pengguna harus memberi allowance terlebih dahulu. Owner dapat memperbarui reward policy, authorized signer, dan treasury.
-
-## Instalasi dependency
+## Build, test, and deploy
 
 ```bash
-cd contracts
 forge install
-```
-
-Repository sudah menyertakan Foundry dan OpenZeppelin di `lib`. Perintah ini memastikan dependency tersedia sebelum build, test, atau deployment.
-
-## Unit test
-
-```bash
-cd contracts
+forge build
 forge test -vvv
+forge fmt --check
 ```
 
-Test mencakup metadata, role minting, maximum supply, claim EIP-712, recipient/reward tampering, expiry, duplicate claim, reward policy, signer rotation, voucher allowance/redemption, dan treasury update.
+Create `.env` from `.env.example` and fill these exact variables:
 
-## Konfigurasi deployment
+```env
+PRIVATE_KEY=your_private_key_here
+REWARD_SIGNER_ADDRESS=0x_your_backend_signer_address
+TREASURY_ADDRESS=0x_your_treasury_address
+BSC_TESTNET_RPC=https://data-seed-prebsc-1-s1.binance.org:8545
+ETHERSCAN_API_KEY=your_bscscan_api_key_here
+```
+
+`PRIVATE_KEY` must belong to a deployer funded with tBNB. `REWARD_SIGNER_ADDRESS` must be derived from the backend `REWARD_SIGNER_PRIVATE_KEY`. `TREASURY_ADDRESS` is optional; when omitted, the deployer becomes the treasury. Deployer, signer, and treasury may differ. Never use a user's private key.
 
 ```bash
 cp .env.example .env
-```
-
-```env
-PRIVATE_KEY=0x...
-REWARD_SIGNER_ADDRESS=0x...
-TREASURY_ADDRESS=0x...
-BSC_TESTNET_RPC=https://data-seed-prebsc-1-s1.binance.org:8545
-ETHERSCAN_API_KEY=...
-```
-
-| Variable | Fungsi |
-| --- | --- |
-| `PRIVATE_KEY` | Private key deployer yang memiliki tBNB |
-| `REWARD_SIGNER_ADDRESS` | Address dari `REWARD_SIGNER_PRIVATE_KEY` backend |
-| `TREASURY_ADDRESS` | Penerima GOPAX dari voucher; opsional, default deployer |
-| `BSC_TESTNET_RPC` | RPC BSC Testnet, chain ID `97` |
-| `ETHERSCAN_API_KEY` | API key verifikasi contract |
-
-Signer, deployer, dan treasury boleh berbeda. Jangan menggunakan private key pengguna.
-
-## Deployment
-
-Dapatkan tBNB dari [BNB Chain Testnet Faucet](https://www.bnbchain.org/en/testnet-faucet), kemudian jalankan:
-
-```bash
-source .env
-
-forge script script/Deploy.s.sol:DeployScript \
+# Edit .env once, then run this single deployment command:
+set -a && . ./.env && set +a && forge script script/Deploy.s.sol:DeployScript \
   --rpc-url "$BSC_TESTNET_RPC" \
-  --broadcast \
-  --verify \
-  -vvvv
+  --broadcast --verify --verifier etherscan \
+  --etherscan-api-key "$ETHERSCAN_API_KEY" -vvvv
 ```
 
-Hilangkan `--verify` jika tidak memerlukan verifikasi. Parameter awal deployment adalah `maxReward = 100`, `minReduction = 0`, dan treasury dari `TREASURY_ADDRESS` atau deployer.
+Initial policy is `maxReward = 100`, `minReduction = 0`. Verify minter role, signer, treasury, token address, and policy after deployment.
 
-Output:
+## ABI and security
 
-```text
-GOPAX_TOKEN_ADDRESS=0x...
-REWARD_MANAGER_ADDRESS=0x...
-```
+Run `npm run abi:sync` in backend and frontend after interface changes. Interface changes normally require redeployment and address updates.
 
-## Setelah deployment
-
-Backend:
-
-```env
-GOPAX_TOKEN_ADDRESS=0x...
-REWARD_MANAGER_ADDRESS=0x...
-REWARD_SIGNER_PRIVATE_KEY=0x...
-TREASURY_ADDRESS=0x...
-CLAIM_AUTHORIZATION_TTL_SECONDS=900
-```
-
-Frontend:
-
-```env
-NEXT_PUBLIC_GOPAX_TOKEN_ADDRESS=0x...
-NEXT_PUBLIC_REWARD_MANAGER_ADDRESS=0x...
-NEXT_PUBLIC_TREASURY_ADDRESS=0x...
-```
-
-Verifikasi bahwa:
-
-1. `RewardManager` memiliki `MINTER_ROLE`;
-2. `authorizedSigner()` cocok dengan signer backend;
-3. `treasury()` cocok dengan konfigurasi aplikasi; dan
-4. `getRewardPolicy()` mengembalikan policy yang diharapkan.
-
-## Sinkronisasi ABI
-
-Setelah interface contract berubah:
-
-```bash
-cd backend
-npm run abi:sync
-
-cd ../frontend
-npm run abi:sync
-```
-
-Perubahan interface biasanya membutuhkan deployment baru. Commit ABI dan perbarui address di semua environment.
-
-## Keamanan
-
-- Contract ditujukan untuk MVP testnet dan belum dinyatakan diaudit untuk production.
-- Simpan deployer key dan signer key di secret manager.
-- Rotasi signer melalui `setAuthorizedSigner` jika key bocor.
-- `carbonKg`, `baselineKg`, dan `minReduction` memakai skala `1e4`.
-- Reward memakai whole GOPAX sebelum dimint menjadi 18 decimals.
+Privy-sponsored transactions may enter through a relay, but authoritative events still come from RewardManager. These testnet contracts have not been declared production-audited. Store deployer/signer keys securely and rotate a compromised signer with `setAuthorizedSigner`. Carbon and baseline values use `1e4` scale; rewards use whole GOPAX before minting 18-decimal units.

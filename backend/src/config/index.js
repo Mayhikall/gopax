@@ -4,6 +4,11 @@ const config = {
   port: parseInt(process.env.PORT || "5000", 10),
   nodeEnv: process.env.NODE_ENV || "development",
 
+  privy: {
+    appId: process.env.PRIVY_APP_ID,
+    appSecret: process.env.PRIVY_APP_SECRET,
+  },
+
   database: {
     host: process.env.DB_HOST || "localhost",
     port: parseInt(process.env.DB_PORT || "5432", 10),
@@ -12,15 +17,6 @@ const config = {
     name: process.env.DB_NAME || "gopax",
   },
 
-  jwt: {
-    secret: process.env.JWT_SECRET || "dev-secret-change-in-production",
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  },
-
-  siwe: {
-    domain: process.env.SIWE_DOMAIN || "localhost",
-    uri: process.env.SIWE_URI || "http://localhost:3000",
-  },
 
   supabase: {
     url: process.env.SUPABASE_URL,
@@ -54,7 +50,7 @@ const config = {
  * Only warn in development, throw in production.
  */
 function validateConfig() {
-  const required = ["JWT_SECRET", "DB_USER", "DB_NAME"];
+  const required = ["PRIVY_APP_ID", "PRIVY_APP_SECRET", "DB_USER", "DB_NAME"];
   if (config.nodeEnv === "production") {
     required.push(
       "RPC_URL",

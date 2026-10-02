@@ -15,6 +15,7 @@ contract RewardManagerTest is Test {
     address public bob = address(0x2);
     address public treasury = address(0x9999);
     uint256 public signerPrivateKey = 0xA11CE;
+    uint256 public alicePrivateKey = 0xB0B;
     address public signer;
 
     uint256 public constant MAX_REWARD = 200;
@@ -35,6 +36,7 @@ contract RewardManagerTest is Test {
 
     function setUp() public {
         signer = vm.addr(signerPrivateKey);
+        alice = vm.addr(alicePrivateKey);
         vm.startPrank(owner);
         // 1. Deploy GopaxToken
         token = new GopaxToken(owner);
@@ -261,6 +263,66 @@ contract RewardManagerTest is Test {
 
         assertEq(token.balanceOf(alice), 30 * 10 ** 18);
         assertEq(token.balanceOf(treasury), 20 * 10 ** 18);
+    }
+
+    function test_RedeemVoucherWithPermitSuccess() public {
+        uint256 amount = 20 * 10 ** 18;
+        uint256 deadline = block.timestamp + 10 minutes;
+
+        vm.startPrank(owner);
+        token.grantRole(token.MINTER_ROLE(), owner);
+        token.mint(alice, 50 * 10 ** 18);
+        vm.stopPrank();
+
+        bytes32 permitTypehash = keccak256(
+            "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+        );
+        bytes32 structHash = keccak256(
+            abi.encode(permitTypehash, alice, address(manager), amount, token.nonces(alice), deadline)
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivateKey, digest);
+
+        vm.expectEmit(true, false, false, true);
+        emit VoucherRedeemed(alice, "vch-transit-10k", amount, block.timestamp);
+
+        vm.prank(alice);
+        manager.redeemVoucherWithPermit("vch-transit-10k", amount, deadline, v, r, s);
+
+        assertEq(token.balanceOf(alice), 30 * 10 ** 18);
+        assertEq(token.balanceOf(treasury), amount);
+        assertEq(token.allowance(alice, address(manager)), 0);
+        assertEq(token.nonces(alice), 1);
+    }
+
+    function test_CannotReplayVoucherPermit() public {
+        uint256 amount = 10 * 10 ** 18;
+        uint256 deadline = block.timestamp + 10 minutes;
+
+        vm.startPrank(owner);
+        token.grantRole(token.MINTER_ROLE(), owner);
+        token.mint(alice, 30 * 10 ** 18);
+        vm.stopPrank();
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                alice,
+                address(manager),
+                amount,
+                token.nonces(alice),
+                deadline
+            )
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePrivateKey, digest);
+
+        vm.prank(alice);
+        manager.redeemVoucherWithPermit("vch-1", amount, deadline, v, r, s);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        manager.redeemVoucherWithPermit("vch-2", amount, deadline, v, r, s);
     }
 
     function test_CannotRedeemWithZeroAmount() public {

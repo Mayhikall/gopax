@@ -1,159 +1,130 @@
-const {
-  SiweMessage,
-  generateNonce,
-  configure,
-  createConfig,
-} = require("@signinwithethereum/siwe");
-const jwt = require("jsonwebtoken");
-const config = require("../config");
+const { PrivyClient } = require("@privy-io/node");
 const db = require("../../db/knex");
+const config = require("../config");
+const { AppError } = require("../middleware/error.middleware");
 
-/**
- * In-memory nonce store with TTL.
- * Maps walletAddress (lowercase) → { nonce, expiresAt }
- *
- * In production, replace with Redis for multi-instance support.
- */
-const nonceStore = new Map();
-const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let privyClient;
 
-/**
- * Initialize SIWE with viem backend.
- * Called once at startup.
- */
-let siweConfigured = false;
-async function initSiwe() {
-  if (!siweConfigured) {
-    const rpcConfig = await createConfig(config.blockchain.rpcUrl);
-    configure(rpcConfig);
-    siweConfigured = true;
+function getPrivyClient() {
+  if (!config.privy.appId || !config.privy.appSecret) {
+    throw new AppError(
+      "Privy authentication is not configured.",
+      503,
+      "AUTH_UNAVAILABLE",
+    );
   }
-}
-
-/**
- * Clean up expired nonces periodically.
- */
-function cleanExpiredNonces() {
-  const now = Date.now();
-  for (const [key, value] of nonceStore.entries()) {
-    if (value.expiresAt < now) {
-      nonceStore.delete(key);
-    }
+  if (!privyClient) {
+    privyClient = new PrivyClient({
+      appId: config.privy.appId,
+      appSecret: config.privy.appSecret,
+    });
   }
-}
-setInterval(cleanExpiredNonces, 60 * 1000); // every 1 minute
-
-/**
- * Generate and store a nonce for a wallet address.
- *
- * @param {string} walletAddress - Ethereum wallet address
- * @returns {{ nonce: string }}
- */
-function generateAndStoreNonce(walletAddress) {
-  const nonce = generateNonce();
-  const key = walletAddress.toLowerCase();
-
-  nonceStore.set(key, {
-    nonce,
-    expiresAt: Date.now() + NONCE_TTL_MS,
-  });
-
-  return { nonce };
+  return privyClient;
 }
 
-/**
- * Retrieve and consume a nonce for a wallet address.
- * Returns null if nonce is invalid or expired.
- *
- * @param {string} walletAddress
- * @returns {string|null} nonce
- */
-function consumeNonce(walletAddress) {
-  const key = walletAddress.toLowerCase();
-  const entry = nonceStore.get(key);
-
-  if (!entry) return null;
-  if (entry.expiresAt < Date.now()) {
-    nonceStore.delete(key);
-    return null;
-  }
-
-  nonceStore.delete(key); // Single use
-  return entry.nonce;
-}
-
-/**
- * Verify a SIWE message and signature.
- * Returns the parsed SIWE message data on success.
- *
- * @param {string} message - EIP-4361 formatted message string
- * @param {string} signature - Hex signature
- * @returns {Promise<{ address: string, nonce: string, chainId: number }>}
- */
-async function verifySiweMessage(message, signature) {
-  await initSiwe();
-
-  const siweMessage = new SiweMessage(message);
-  const { success, data, error } = await siweMessage.verify(
-    {
-      signature,
-      domain: config.siwe.domain,
-      nonce: siweMessage.nonce,
-    },
-    { suppressExceptions: true },
+function selectIdentity(privyUser) {
+  const accounts = privyUser.linked_accounts || [];
+  const ethereumWallets = accounts.filter(
+    (account) =>
+      account.type === "wallet" &&
+      account.chain_type === "ethereum" &&
+      typeof account.address === "string",
   );
+  const embedded = ethereumWallets.find(
+    (account) =>
+      account.connector_type === "embedded" ||
+      account.wallet_client_type === "privy",
+  );
+  const google = accounts.find((account) => account.type === "google_oauth");
+  const wallet = google && embedded ? embedded : ethereumWallets[0];
 
-  if (!success) {
-    throw new Error(error?.message || "SIWE verification failed");
+  if (!wallet) {
+    throw new AppError(
+      "Your Privy account does not have an Ethereum wallet yet.",
+      409,
+      "WALLET_NOT_READY",
+    );
   }
 
-  return data;
+  return {
+    walletAddress: wallet.address.toLowerCase(),
+    walletType:
+      wallet.connector_type === "embedded" ||
+      wallet.wallet_client_type === "privy"
+        ? "embedded"
+        : "external",
+    authMethod: google ? "google" : "wallet",
+    email: google?.email || null,
+  };
 }
 
-/**
- * Find existing user or create one from wallet address.
- *
- * @param {string} walletAddress
- * @returns {Promise<Object>} user record
- */
-async function findOrCreateUser(walletAddress) {
-  const address = walletAddress.toLowerCase();
+async function findOrCreatePrivyUser(privyUser) {
+  const existing = await db("users")
+    .where({ privy_user_id: privyUser.id })
+    .first();
 
-  let user = await db("users").where({ wallet_address: address }).first();
+  if (existing) return existing;
 
-  if (!user) {
-    const [newUser] = await db("users")
-      .insert({
-        wallet_address: address,
+  const identity = selectIdentity(privyUser);
+  const walletOwner = await db("users")
+    .where({ wallet_address: identity.walletAddress })
+    .first();
+
+  if (walletOwner) {
+    if (
+      walletOwner.privy_user_id &&
+      walletOwner.privy_user_id !== privyUser.id
+    ) {
+      throw new AppError(
+        "This wallet already belongs to another Gopax account.",
+        409,
+        "WALLET_ALREADY_LINKED",
+      );
+    }
+
+    const [linked] = await db("users")
+      .where({ id: walletOwner.id })
+      .update({
+        privy_user_id: privyUser.id,
+        auth_method: identity.authMethod,
+        wallet_type: identity.walletType,
+        email: identity.email,
+        updated_at: db.fn.now(),
       })
       .returning("*");
-    user = newUser;
+    return linked;
   }
 
-  return user;
+  const [created] = await db("users")
+    .insert({
+      privy_user_id: privyUser.id,
+      wallet_address: identity.walletAddress,
+      auth_method: identity.authMethod,
+      wallet_type: identity.walletType,
+      email: identity.email,
+    })
+    .returning("*");
+  return created;
 }
 
-/**
- * Issue a JWT for a user.
- *
- * @param {{ id: string, wallet_address: string }} user
- * @returns {string} JWT token
- */
-function issueToken(user) {
-  return jwt.sign(
-    {
-      id: user.id,
-      walletAddress: user.wallet_address,
-    },
-    config.jwt.secret,
-    { expiresIn: config.jwt.expiresIn },
-  );
+async function authenticateAccessToken(accessToken) {
+  const client = getPrivyClient();
+  const claims = await client.utils().auth().verifyAccessToken(accessToken);
+  let user = await db("users").where({ privy_user_id: claims.user_id }).first();
+  if (!user) {
+    const privyUser = await client.users()._get(claims.user_id);
+    user = await findOrCreatePrivyUser(privyUser);
+  }
+
+  return {
+    id: user.id,
+    privyUserId: claims.user_id,
+    walletAddress: user.wallet_address,
+  };
 }
 
 module.exports = {
-  generateAndStoreNonce,
-  consumeNonce,
-  verifySiweMessage,
-  findOrCreateUser,
-  issueToken,
+  authenticateAccessToken,
+  findOrCreatePrivyUser,
+  selectIdentity,
 };

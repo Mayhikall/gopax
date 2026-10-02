@@ -148,21 +148,9 @@ async function verifyRewardClaim({
 
   const managerAddress = getAddress(config.blockchain.rewardManagerAddress);
   const expectedWallet = getAddress(walletAddress);
-  if (!receipt.to || !isAddressEqual(getAddress(receipt.to), managerAddress)) {
-    throw new AppError(
-      "Transaction was sent to an unexpected contract.",
-      409,
-      "INVALID_CLAIM_TX",
-    );
-  }
-  if (!isAddressEqual(getAddress(receipt.from), expectedWallet)) {
-    throw new AppError(
-      "Transaction sender does not match the reward owner.",
-      409,
-      "INVALID_CLAIM_TX",
-    );
-  }
-
+  // Sponsored transactions can be submitted through a Privy/Alchemy relay,
+  // so receipt.from and receipt.to identify the relayer and relay contract.
+  // The configured RewardManager event proves the executed inner call.
   const hasExpectedEvent = receipt.logs.some((log) => {
     if (!isAddressEqual(getAddress(log.address), managerAddress)) return false;
     try {
@@ -231,22 +219,8 @@ async function verifyVoucherRedemption({
   const expectedWallet = getAddress(walletAddress);
   const expectedWei = BigInt(expectedAmount) * 10n ** 18n;
 
-  if (!receipt.to || !isAddressEqual(getAddress(receipt.to), managerAddress)) {
-    throw new AppError(
-      "Transaction was not sent to the RewardManager contract.",
-      409,
-      "INVALID_REDEMPTION_TX",
-    );
-  }
-
-  if (!isAddressEqual(getAddress(receipt.from), expectedWallet)) {
-    throw new AppError(
-      "Transaction sender does not match the connected wallet.",
-      409,
-      "INVALID_REDEMPTION_SENDER",
-    );
-  }
-
+  // Sponsored redemptions are relayed too. Only accept the exact event
+  // emitted by the configured RewardManager for this user and voucher.
   const hasExpectedEvent = receipt.logs.some((log) => {
     if (!isAddressEqual(getAddress(log.address), managerAddress)) return false;
     try {
@@ -261,7 +235,7 @@ async function verifyVoucherRedemption({
       return (
         isAddressEqual(getAddress(args.user), expectedWallet) &&
         args.voucherId === voucherId &&
-        args.amount >= expectedWei
+        args.amount === expectedWei
       );
     } catch {
       return false;

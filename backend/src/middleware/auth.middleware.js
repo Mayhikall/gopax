@@ -1,33 +1,28 @@
-const jwt = require("jsonwebtoken");
-const config = require("../config");
+const { InvalidAuthTokenError } = require("@privy-io/node");
+const authService = require("../services/auth.service");
 const { AppError } = require("./error.middleware");
 
 /**
- * Middleware to authenticate requests using JWT Bearer token.
- * Attaches decoded user payload to req.user.
- *
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @param {import('express').NextFunction} next
+ * Verifies a Privy access token and maps it to the canonical Gopax user.
  */
-function authenticate(req, res, next) {
+async function authenticate(req, _res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return next(new AppError("Authentication required.", 401, "UNAUTHORIZED"));
   }
 
-  const token = authHeader.slice(7); // Remove "Bearer " prefix
-
   try {
-    const decoded = jwt.verify(token, config.jwt.secret);
-    req.user = decoded; // { id, walletAddress, iat, exp }
-    next();
-  } catch (err) {
-    if (err.name === "TokenExpiredError") {
-      return next(new AppError("Token expired.", 401, "TOKEN_EXPIRED"));
+    req.user = await authService.authenticateAccessToken(authHeader.slice(7));
+    return next();
+  } catch (error) {
+    if (error instanceof AppError) return next(error);
+    if (error instanceof InvalidAuthTokenError) {
+      return next(
+        new AppError("Invalid or expired token.", 401, "INVALID_TOKEN"),
+      );
     }
-    return next(new AppError("Invalid token.", 401, "INVALID_TOKEN"));
+    return next(error);
   }
 }
 

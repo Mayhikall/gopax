@@ -1,143 +1,58 @@
 # Gopax Backend
 
-REST API Gopax dibangun dengan Node.js, Express 5, PostgreSQL, Knex.js, SIWE, JWT, Supabase Storage, vision AI, viem, dan layanan estimasi jarak.
+The Node.js and Express API uses PostgreSQL, Knex.js, Privy, Supabase Storage, vision AI, viem, and distance services. It handles authentication, proof validation, deterministic emissions and rewards, EIP-712 claims, impact aggregates, vouchers, and on-chain verification.
 
-Backend menangani autentikasi, validasi bukti perjalanan, estimasi emisi, reward, otorisasi claim EIP-712, agregat impact, katalog voucher, dan verifikasi transaksi on-chain. Dokumentasi lengkap project tersedia di [README utama](../README.md).
-
-## Fitur
-
-- Nonce dan verifikasi Sign-In with Ethereum.
-- Session JWT dan profil pengguna.
-- Upload JPEG/PNG maksimum 10 MiB ke Supabase Storage.
-- Magic-byte validation, SHA-256 proof hash, dan duplicate check.
-- Ekstraksi tiket serta eligibility assessment menggunakan vision AI.
-- Estimasi jarak dan perhitungan emisi/reward deterministik.
-- EIP-712 claim authorization dan receipt verification.
-- Katalog voucher, stock, transaction anti-replay, event verification, dan kode voucher.
-
-## Menjalankan
-
-Prasyarat: Node.js, PostgreSQL, Supabase Storage, OpenRouter API key, BSC Testnet RPC, serta deployment `GopaxToken` dan `RewardManager`.
+## Setup
 
 ```bash
-cd backend
 npm ci
 cp .env.example .env
 npm run migrate
 npm run dev
 ```
 
-API berjalan pada `http://localhost:5000` secara default. Health check:
+The API defaults to `http://localhost:5000`; health check: `GET /health`.
 
-```bash
-curl http://localhost:5000/health
-```
+Configure the database, Privy App ID and backend-only secret, Supabase, OpenRouter, RPC, contract addresses, reward signer, treasury, CORS, claim TTL, and distance providers. `REWARD_SIGNER_PRIVATE_KEY` must resolve to `RewardManager.authorizedSigner()`; it may differ from the deployer and needs no gas.
 
-## Konfigurasi
+## Assessment flow
 
-| Variable | Fungsi |
+Migrations create users with one primary wallet per `privy_user_id`, trips, proofs, assessments, rewards, vouchers, and redemptions.
+
+1. Validate MIME type and magic bytes.
+2. Compare SHA-256 against the user's proofs.
+3. Extract trip data with vision AI and validate its output.
+4. Obtain distance from proof data or a provider.
+5. Calculate emissions with fixed factors.
+6. Assess evidence eligibility.
+7. Calculate GOPAX in backend code; AI never sets token amounts.
+8. Store the trip, assessments, and reward.
+
+A retry endpoint continues recoverable assessments without creating another trip.
+
+## Claims, vouchers, and relays
+
+Claim authorizations bind recipient, assessment hash, emissions, baseline, reward, and deadline. Confirmation verifies the exact `CarbonRewarded` event before setting `CLAIMED`.
+
+Voucher redemption uses EIP-2612 and `redeemVoucherWithPermit`. The backend rejects reused transaction hashes, checks stock, and verifies the exact `VoucherRedeemed` event against wallet, voucher ID, and price before returning a code.
+
+Privy transactions may be relayed, so receipt `from` and `to` can differ from the user and RewardManager. The configured RewardManager's events are authoritative. If mining succeeds but API sync fails, retry with the same transaction hash; never submit a second claim.
+
+## API and commands
+
+Protected endpoints require `Authorization: Bearer <privy-access-token>`. Routes cover `/auth/session`, `/users`, `/trips`, assessment retry, claim preparation/confirmation, `/impact`, and voucher catalog/history/redemption.
+
+| Command | Purpose |
 | --- | --- |
-| `PORT`, `NODE_ENV` | Port HTTP dan environment |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | PostgreSQL |
-| `JWT_SECRET`, `JWT_EXPIRES_IN` | Session JWT |
-| `SIWE_DOMAIN`, `SIWE_URI` | Harus cocok dengan frontend |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET` | Private proof storage |
-| `RPC_URL` | BSC Testnet RPC |
-| `GOPAX_TOKEN_ADDRESS`, `REWARD_MANAGER_ADDRESS` | Deployment contract |
-| `REWARD_SIGNER_PRIVATE_KEY` | Signer EIP-712 aplikasi, bukan key pengguna |
-| `TREASURY_ADDRESS` | Treasury deployment aktif |
-| `CLAIM_AUTHORIZATION_TTL_SECONDS` | Masa berlaku authorization, default 900 detik |
-| `OPENROUTER_API_KEY` | API key vision model |
-| `OPENROUTER_MODEL`, `OPENROUTER_FALLBACK_MODEL` | Model utama dan fallback |
-| `CORS_ORIGIN` | Origin frontend |
-| `GEOCODING_PROVIDER` | `photon` atau `nominatim` |
-| `PHOTON_BASE_URL`, `NOMINATIM_BASE_URL`, `OSRM_BASE_URL` | Distance providers |
-| `NOMINATIM_USER_AGENT` | Identitas aplikasi untuk provider |
-| `NETWORK_AUTO_SELECT_FAMILY` | Workaround network Node opsional |
+| `npm run dev` | Start with nodemon |
+| `npm start` | Start production server |
+| `npm run migrate` | Run migrations |
+| `npm run migrate:rollback` | Roll back latest migration |
+| `npm run seed` | Run available seeds |
+| `npm run abi:sync` | Build contracts offline and synchronize ABI |
 
-`REWARD_SIGNER_PRIVATE_KEY` harus menghasilkan address yang sama dengan `RewardManager.authorizedSigner()`. Signer boleh berbeda dari deployer dan tidak memerlukan saldo gas.
+Run ABI synchronization after interface changes and update addresses after redeployment.
 
-## Database
+## Security
 
-```bash
-npm run migrate
-npm run migrate:rollback
-```
-
-Migration membuat tabel `users`, `trips`, `trip_proofs`, `carbon_assessments`, `ai_assessments`, `rewards`, `vouchers`, dan `voucher_redemptions`. Migration voucher juga memasukkan katalog contoh untuk development/demo.
-
-## Pipeline perjalanan
-
-1. File diperiksa melalui MIME type dan magic bytes.
-2. SHA-256 dibandingkan dengan bukti pengguna sebelumnya.
-3. Vision AI mengekstrak kategori, asal, tujuan, tanggal, dan jarak opsional.
-4. Backend memvalidasi extraction.
-5. Jarak diambil dari bukti atau distance provider.
-6. Emisi dihitung menggunakan faktor tetap.
-7. AI menilai kesesuaian bukti dengan konteks trip.
-8. Backend menghitung jumlah GOPAX; AI tidak menentukan token amount.
-9. Trip, assessment, eligibility, dan reward disimpan.
-
-Endpoint retry dapat melanjutkan assessment yang gagal tanpa membuat trip baru.
-
-## Claim dan voucher
-
-Backend menandatangani authorization claim yang mengikat recipient, assessment hash, carbon, baseline, reward, dan deadline. Setelah transaksi mined, confirmation endpoint memverifikasi receipt dan event sebelum menandai reward `CLAIMED`.
-
-Untuk voucher, backend menolak transaction hash yang pernah digunakan, memeriksa voucher dan stock, lalu memverifikasi event `VoucherRedeemed` terhadap wallet, voucher ID, dan harga. Stock dan redemption dicatat dalam transaksi database sebelum kode dikembalikan.
-
-## API
-
-Protected endpoint menggunakan:
-
-```http
-Authorization: Bearer <jwt>
-```
-
-| Method | Endpoint | Auth | Fungsi |
-| --- | --- | --- | --- |
-| `GET` | `/health` | Tidak | Health check |
-| `POST` | `/auth/nonce` | Tidak | Nonce SIWE |
-| `POST` | `/auth/verify` | Tidak | Verifikasi SIWE dan JWT |
-| `POST` | `/users` | Ya | Membuat/memperbarui profil |
-| `GET` | `/users/me` | Ya | Profil aktif |
-| `POST` | `/trips` | Ya | Upload multipart field `proof` |
-| `GET` | `/trips` | Ya | Daftar trip |
-| `GET` | `/trips/:id` | Ya | Detail trip |
-| `POST` | `/trips/:id/assessment/retry` | Ya | Retry assessment |
-| `POST` | `/trips/:id/claim` | Ya | Menyiapkan claim |
-| `POST` | `/trips/:id/claim/confirm` | Ya | Verifikasi dan sync claim |
-| `GET` | `/impact` | Ya | Agregat impact |
-| `GET` | `/vouchers` | Tidak | Katalog voucher |
-| `GET` | `/vouchers/my-vouchers` | Ya | Riwayat voucher |
-| `POST` | `/vouchers/redeem` | Ya | Verifikasi tx dan membuat kode |
-
-## Scripts
-
-| Command | Fungsi |
-| --- | --- |
-| `npm run dev` | Development server dengan nodemon |
-| `npm start` | Menjalankan server Node |
-| `npm run migrate` | Menjalankan migration |
-| `npm run migrate:rollback` | Rollback migration terakhir |
-| `npm run migrate:make -- <name>` | Membuat migration |
-| `npm run seed` | Menjalankan Knex seed jika tersedia |
-| `npm run abi:sync` | Build contract offline dan sinkronkan ABI |
-
-## Sinkronisasi ABI
-
-```bash
-npm run abi:sync
-```
-
-Jalankan setelah interface contract berubah dan perbarui address jika perubahan memerlukan deployment baru.
-
-## Keamanan dan batasan
-
-- Jangan commit `.env`, private key, JWT secret, atau Supabase service role key.
-- Gunakan private bucket untuk bukti perjalanan.
-- Gambar tiket dan data pribadi tetap off-chain.
-- AI dapat salah membaca tiket dan belum menggantikan fraud detection menyeluruh.
-- Public distance provider memiliki rate limit dan tidak menjamin uptime.
-- Voucher migration adalah data demo, bukan benefit merchant production.
-- Backend ditujukan untuk MVP testnet dan memerlukan security review sebelum production.
+Never commit secrets or private keys. Keep proofs in a private bucket and personal data off-chain. AI can misread tickets and does not replace fraud detection. Public distance services have external limits. Seeded vouchers are demo data. This testnet MVP requires a security review before production.

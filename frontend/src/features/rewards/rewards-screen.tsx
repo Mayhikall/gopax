@@ -16,26 +16,16 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Empty, ErrorState, Loading } from "@/components/feedback";
 import { request, errorMessage } from "@/lib/api";
+import { useSession } from "@/features/auth/session-provider";
 import { explorerTx } from "@/lib/web3/config";
 import { pathFor } from "@/lib/navigation";
 import { demoVouchers, demoRedemptions } from "@/fixtures/journeys";
 import { VoucherModal } from "./voucher-modal";
 import type { Voucher, VoucherCategory, VoucherRedemption } from "@/types";
 
-function getSessionToken(): string | undefined {
-  if (typeof window === "undefined") return undefined;
-  try {
-    const raw = window.localStorage.getItem("gopax.auth.session.v1");
-    if (!raw) return undefined;
-    const parsed = JSON.parse(raw);
-    return typeof parsed?.token === "string" ? parsed.token : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function RewardsScreen({ demo = false }: { demo?: boolean }) {
   const [, startTransition] = useTransition();
+  const { api } = useSession();
 
   const [activeTab, setActiveTab] = useState<"catalog" | "my-vouchers">("catalog");
   const [selectedCategory, setSelectedCategory] = useState<VoucherCategory>("ALL");
@@ -59,16 +49,11 @@ export function RewardsScreen({ demo = false }: { demo?: boolean }) {
       setLoading(true);
       setError(null);
       try {
-        const token = getSessionToken();
         const [catalogRes, redemptionsRes] = await Promise.all([
           request<{ vouchers: Voucher[] }>("/vouchers"),
-          token
-            ? request<{ redemptions: VoucherRedemption[] }>(
-                "/vouchers/my-vouchers",
-                {},
-                token,
-              ).catch(() => ({ redemptions: [] }))
-            : Promise.resolve({ redemptions: [] }),
+          api<{ redemptions: VoucherRedemption[] }>(
+            "/vouchers/my-vouchers",
+          ).catch(() => ({ redemptions: [] })),
         ]);
 
         if (isMounted) {
@@ -89,7 +74,7 @@ export function RewardsScreen({ demo = false }: { demo?: boolean }) {
     return () => {
       isMounted = false;
     };
-  }, [demo]);
+  }, [api, demo]);
 
   function handleRedeemSuccess(newRedemption: VoucherRedemption) {
     startTransition(() => {
