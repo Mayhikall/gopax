@@ -5,7 +5,7 @@ const { AppError } = require("../middleware/error.middleware");
 /**
  * POST /users
  * Create or update user profile (name).
- * Wallet is derived from JWT.
+ * Wallet is derived from the verified Privy access token.
  */
 async function createProfile(req, res, next) {
   try {

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
@@ -9,7 +10,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
  * @notice ERC-20 reward token for Gopax platform.
  * @dev Minting permission is restricted to MINTER_ROLE.
  */
-contract GopaxToken is ERC20, AccessControl {
+contract GopaxToken is ERC20, ERC20Permit, AccessControl {
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     /// @notice Maximum total supply (10,000,000 GOPAX tokens with 18 decimals)
@@ -21,7 +22,7 @@ contract GopaxToken is ERC20, AccessControl {
      * @dev Sets token name and symbol, initializes the admin.
      * @param initialAdmin Address allowed to grant and revoke token roles.
      */
-    constructor(address initialAdmin) ERC20("Gopax", "GOPAX") {
+    constructor(address initialAdmin) ERC20("Gopax", "GOPAX") ERC20Permit("Gopax") {
         _grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
     }
 

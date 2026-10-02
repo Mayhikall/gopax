@@ -1,11 +1,11 @@
 {
   "chainId": 97,
-  "token": "0x7c5cB901fDAa9bbc128b70774E9c396587CFBdA8",
-  "rewardManager": "0x9bB656D72B409C38b86D574672d16218AFc8c6dB",
+  "token": "0x518fC1a3EFc6806F0B46C25CbC21a27C216597F5",
+  "rewardManager": "0xba6aa6E7685563C56225d085c6cD71a1Ea1a6B4F",
   "transactions": [
-    "0x4a99fad45a6b8774f1aa2056caf929afdf3f7551fb5fd33788105e5c8f2bb401",
-    "0xbddf12e9b6d947b23e694214dc210e962aae87af43bc14618f3455be04a08367",
-    "0xa58427d81c5f47b6f2b6ac8d96cea8468d90d3dd72f5553034edb4801e918aa2"
+    "0xaf6648873cc99340a114c8ef1d9aa73717746da84573e29d48cdd5051621731d",
+    "0x3f6e9a6de05adce316be83bde00a42c538fb3fff0ff06d15c5e0ccd85cc24edb",
+    "0xf249b7c442f7f71a1aa509c4f97113cdbe2159ce41b8a1f5228de984afacbba2"
   ],
   "verifiedChecks": [
     "receipts successful",

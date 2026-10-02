@@ -92,7 +92,7 @@ export function ProfileScreen({ demo = false }: { demo?: boolean }) {
             }}
           >
             <LogOut size={17} />
-            {demo ? "Exit preview" : "Disconnect wallet"}
+            {demo ? "Exit preview" : "Sign out"}
           </Button>
         </aside>
       </div>

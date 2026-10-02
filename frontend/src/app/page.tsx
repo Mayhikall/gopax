@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { ArrowRight, TrainFront } from "lucide-react";
+import { ArrowRight, TrainFront, Wallet } from "lucide-react";
 import { Brand } from "@/components/brand";
 import { useSession } from "@/features/auth/session-provider";
 import { Button } from "@/components/ui/button";
@@ -30,18 +29,10 @@ export default function LandingPage() {
     );
   }, [ready, user, router]);
 
-  async function signIn() {
+  function signIn(method: "google" | "wallet") {
     setError("");
     try {
-      const signedInUser = await login();
-      const next = safeDestination(
-        new URLSearchParams(window.location.search).get("next"),
-      );
-      router.replace(
-        signedInUser.name
-          ? next
-          : `/onboarding?next=${encodeURIComponent(next)}`,
-      );
+      login(method);
     } catch (cause) {
       setError(errorMessage(cause));
     }
@@ -66,51 +57,30 @@ export default function LandingPage() {
           <p>Save the route and claim GOPAX when the trip is eligible.</p>
 
           <div className="landing-action">
-            <ConnectButton.Custom>
-              {({
-                account,
-                chain,
-                openChainModal,
-                openConnectModal,
-                mounted,
-              }) => {
-                if (!mounted) return <Button disabled>Connect wallet</Button>;
-                if (!account)
-                  return (
-                    <Button onClick={openConnectModal}>Connect wallet</Button>
-                  );
-                if (chain?.unsupported)
-                  return (
-                    <Button onClick={openChainModal}>Switch network</Button>
-                  );
-                if (user)
-                  return (
-                    <Button
-                      onClick={() =>
-                        router.push(user.name ? "/home" : "/onboarding")
-                      }
-                    >
-                      Continue to Gopax
-                    </Button>
-                  );
-                return (
-                  <Button onClick={signIn} disabled={busy}>
-                    {busy ? "Waiting for signature…" : "Sign in with wallet"}
-                  </Button>
-                );
-              }}
-            </ConnectButton.Custom>
+            <Button onClick={() => signIn("google")} disabled={busy}>
+              <span className="google-icon-wrapper" aria-hidden="true">
+                <img src="/google.svg" alt="" width={16} height={16} />
+              </span>
+              <span>{busy ? "Opening Privy…" : "Continue with Google"}</span>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => signIn("wallet")}
+              disabled={busy}
+            >
+              <Wallet size={18} />
+              <span>Connect wallet</span>
+            </Button>
             {(process.env.NODE_ENV !== "production" ||
               process.env.NEXT_PUBLIC_ENABLE_PREVIEW === "true") && (
-              <Button asChild variant="ghost">
-                <Link href="/preview">
-                  View sample journeys <ArrowRight size={17} />
-                </Link>
-              </Button>
-            )}
+                <Button asChild variant="ghost">
+                  <Link href="/preview">
+                    View sample journeys <ArrowRight size={17} />
+                  </Link>
+                </Button>
+              )}
             <p className="sign-in-note">
-              Connect your wallet, then sign a message to sign in. Signing in
-              does not send a transaction or cost gas.
+              Continue with Google for an embedded wallet, or connect an existing wallet through Privy.
             </p>
             {error && (
               <p className="landing-error" role="alert">

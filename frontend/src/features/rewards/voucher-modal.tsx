@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useAccount, usePublicClient, useReadContract, useWriteContract } from "wagmi";
-import { parseUnits, formatUnits, type Abi } from "viem";
+import { useAccount, usePublicClient, useReadContract } from "wagmi";
+import { encodeFunctionData, formatUnits, parseSignature, parseUnits, type Abi } from "viem";
 import { Button } from "@/components/ui/button";
 import {
   Check,
@@ -16,7 +16,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { request, errorMessage } from "@/lib/api";
+import { errorMessage } from "@/lib/api";
 import {
   TOKEN_ADDRESS,
   MANAGER_ADDRESS,
@@ -24,18 +24,8 @@ import {
   explorerTx,
 } from "@/lib/web3/config";
 import { useSession } from "@/features/auth/session-provider";
+import { useGopaxTransaction } from "@/lib/web3/use-gopax-transaction";
 
-function getSessionToken(): string | undefined {
-  if (typeof window === "undefined") return undefined;
-  try {
-    const raw = window.localStorage.getItem("gopax.auth.session.v1");
-    if (!raw) return undefined;
-    const parsed = JSON.parse(raw);
-    return typeof parsed?.token === "string" ? parsed.token : undefined;
-  } catch {
-    return undefined;
-  }
-}
 import tokenArtifact from "@/lib/web3/abi/GopaxToken.json";
 import managerArtifact from "@/lib/web3/abi/RewardManager.json";
 import type { Voucher, VoucherRedemption } from "@/types";
@@ -57,12 +47,16 @@ export function VoucherModal({
   demo = false,
 }: VoucherModalProps) {
   const { address } = useAccount();
-  const { user, api } = useSession();
+  const { api } = useSession();
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
-  const { writeContractAsync } = useWriteContract();
+  const {
+    sendTransaction: sendGopaxTransaction,
+    signTypedData,
+    isSponsored,
+  } = useGopaxTransaction();
 
   const [step, setStep] = useState<
-    "confirm" | "approving" | "redeeming" | "recording" | "success"
+    "confirm" | "signing" | "redeeming" | "recording" | "success"
   >("confirm");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -74,7 +68,7 @@ export function VoucherModal({
     return () => setMounted(false);
   }, []);
 
-  // Read current token balance and allowance
+  // Read the current GOPAX token balance.
   const { data: balanceData } = useReadContract({
     address: TOKEN_ADDRESS,
     abi: tokenAbi,
@@ -84,22 +78,12 @@ export function VoucherModal({
     query: { enabled: !demo && !!address && !!TOKEN_ADDRESS },
   });
 
-  const { data: allowanceData, refetch: refetchAllowance } = useReadContract({
-    address: TOKEN_ADDRESS,
-    abi: tokenAbi,
-    functionName: "allowance",
-    args: address && MANAGER_ADDRESS ? [address, MANAGER_ADDRESS] : undefined,
-    chainId: CHAIN_ID,
-    query: { enabled: !demo && !!address && !!TOKEN_ADDRESS && !!MANAGER_ADDRESS },
-  });
 
   if (!voucher) return null;
 
   const priceWei = parseUnits(voucher.price.toString(), 18);
   const currentBalanceWei = (balanceData as bigint | undefined) ?? 0n;
-  const currentAllowanceWei = (allowanceData as bigint | undefined) ?? 0n;
   const hasEnoughBalance = demo || currentBalanceWei >= priceWei;
-  const needsApproval = !demo && currentAllowanceWei < priceWei;
 
   async function handleRedeem() {
     setError(null);
@@ -132,97 +116,76 @@ export function VoucherModal({
     }
 
     try {
-      // 1. Fresh on-chain allowance check to prevent unnecessary / failed approvals
-      let currentAllowance = currentAllowanceWei;
-      if (publicClient && address && MANAGER_ADDRESS && TOKEN_ADDRESS) {
-        try {
-          currentAllowance = (await publicClient.readContract({
-            address: TOKEN_ADDRESS,
-            abi: tokenAbi,
-            functionName: "allowance",
-            args: [address, MANAGER_ADDRESS],
-          })) as bigint;
-        } catch (e) {
-          console.warn("[voucher-modal] Could not query fresh allowance:", e);
-        }
-      }
+      if (!publicClient) throw new Error("BSC RPC is unavailable.");
 
-      // Approve step if allowance is less than voucher price
-      if (currentAllowance < priceWei) {
-        setStep("approving");
-        const approveTx = await writeContractAsync({
-          address: TOKEN_ADDRESS,
-          abi: tokenAbi,
-          functionName: "approve",
-          args: [MANAGER_ADDRESS, priceWei],
-        });
+      setStep("signing");
+      const nonce = (await publicClient.readContract({
+        address: TOKEN_ADDRESS,
+        abi: tokenAbi,
+        functionName: "nonces",
+        args: [address],
+      })) as bigint;
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 10 * 60);
+      const signature = await signTypedData(
+        address,
+        {
+          domain: {
+            name: "Gopax",
+            version: "1",
+            chainId: CHAIN_ID,
+            verifyingContract: TOKEN_ADDRESS,
+          },
+          types: {
+            Permit: [
+              { name: "owner", type: "address" },
+              { name: "spender", type: "address" },
+              { name: "value", type: "uint256" },
+              { name: "nonce", type: "uint256" },
+              { name: "deadline", type: "uint256" },
+            ],
+          },
+          primaryType: "Permit",
+          message: {
+            owner: address,
+            spender: MANAGER_ADDRESS,
+            value: priceWei,
+            nonce,
+            deadline,
+          },
+        },
+      );
+      const parsed = parseSignature(signature as `0x${string}`);
+      const v = Number(parsed.v ?? BigInt((parsed.yParity ?? 0) + 27));
 
-        if (publicClient) {
-          await publicClient.waitForTransactionReceipt({ hash: approveTx });
-        }
-        await refetchAllowance();
-      }
-
-      // 2. Redeem on-chain step
       setStep("redeeming");
-      const redeemTx = await writeContractAsync({
-        address: MANAGER_ADDRESS,
-        abi: managerAbi,
-        functionName: "redeemVoucher",
-        args: [voucher!.id, priceWei],
+      const redeemTx = await sendGopaxTransaction({
+        from: address,
+        to: MANAGER_ADDRESS,
+        data: encodeFunctionData({
+          abi: managerAbi,
+          functionName: "redeemVoucherWithPermit",
+          args: [
+            voucher!.id,
+            priceWei,
+            deadline,
+            v,
+            parsed.r,
+            parsed.s,
+          ],
+        }),
+        action: "Redeem voucher",
       });
 
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash: redeemTx });
-      }
+      await publicClient.waitForTransactionReceipt({ hash: redeemTx });
 
-      // 3. Record redemption with backend API
       setStep("recording");
-      const authToken = getSessionToken();
-      let res: { success: boolean; redemption: VoucherRedemption };
-
-      if (api && user) {
-        try {
-          res = await api<{ success: boolean; redemption: VoucherRedemption }>(
-            "/vouchers/redeem",
-            {
-              method: "POST",
-              body: JSON.stringify({
-                voucherId: voucher!.id,
-                txHash: redeemTx,
-              }),
-            },
-          );
-        } catch (apiErr) {
-          if (authToken) {
-            res = await request<{ success: boolean; redemption: VoucherRedemption }>(
-              "/vouchers/redeem",
-              {
-                method: "POST",
-                body: JSON.stringify({
-                  voucherId: voucher!.id,
-                  txHash: redeemTx,
-                }),
-              },
-              authToken,
-            );
-          } else {
-            throw apiErr;
-          }
-        }
-      } else {
-        res = await request<{ success: boolean; redemption: VoucherRedemption }>(
-          "/vouchers/redeem",
-          {
-            method: "POST",
-            body: JSON.stringify({
-              voucherId: voucher!.id,
-              txHash: redeemTx,
-            }),
-          },
-          authToken,
-        );
-      }
+      const res = await api<{
+        success: boolean;
+        redemption: VoucherRedemption;
+      }>("/vouchers/redeem", {
+        method: "POST",
+        body: JSON.stringify({ voucherId: voucher!.id, txHash: redeemTx }),
+      });
 
       setRedemptionData(res.redemption);
       setStep("success");
@@ -232,7 +195,7 @@ export function VoucherModal({
       const rawMsg = errorMessage(err);
       if (rawMsg.includes("gas limit too high") || rawMsg.includes("reverted")) {
         setError(
-          "On-chain transaction reverted. Please verify that your token approval and balance are sufficient.",
+          "On-chain transaction reverted. Please verify that your token balance is sufficient.",
         );
       } else if (rawMsg.includes("rejected") || rawMsg.includes("denied")) {
         setError("Transaction was cancelled in your wallet.");
@@ -357,11 +320,21 @@ export function VoucherModal({
                 <span>Remaining stock</span>
                 <span>{voucher.stock} available</span>
               </div>
+              {!demo && address && (
+                <div className="voucher-summary-row">
+                  <span>Network fee</span>
+                  <span>
+                    {isSponsored(address)
+                      ? "Sponsored by Gopax"
+                      : "Paid in BNB by wallet"}
+                  </span>
+                </div>
+              )}
             </div>
 
             {!hasEnoughBalance && (
               <div className="metric-error" role="alert">
-                Insufficient GOPAX tokens. Complete more green trips to earn tokens.
+                Insufficient GOPAX balance. Complete eligible green trips to earn tokens.
               </div>
             )}
 
@@ -379,32 +352,28 @@ export function VoucherModal({
                 onClick={handleRedeem}
                 disabled={!hasEnoughBalance || step !== "confirm"}
               >
-                {step === "approving" && (
+                {step === "signing" && (
                   <>
                     <LoaderCircle className="spinner" size={16} />
-                    <span>Approving tokens...</span>
+                    <span>Authorizing permit…</span>
                   </>
                 )}
                 {step === "redeeming" && (
                   <>
                     <LoaderCircle className="spinner" size={16} />
-                    <span>Confirming on-chain...</span>
+                    <span>Submitting transaction…</span>
                   </>
                 )}
                 {step === "recording" && (
                   <>
                     <LoaderCircle className="spinner" size={16} />
-                    <span>Issuing code...</span>
+                    <span>Finalizing voucher…</span>
                   </>
                 )}
                 {step === "confirm" && (
                   <>
                     <Ticket size={16} />
-                    <span>
-                      {needsApproval
-                        ? "Approve & Redeem"
-                        : `Redeem for ${voucher.price} GOPAX`}
-                    </span>
+                    <span>Redeem for {voucher.price} GOPAX</span>
                   </>
                 )}
               </Button>

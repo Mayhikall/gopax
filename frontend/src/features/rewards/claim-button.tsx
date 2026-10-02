@@ -4,14 +4,14 @@ import {
   useAccount,
   usePublicClient,
   useSwitchChain,
-  useWriteContract,
 } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
-import { parseEventLogs, type Abi, type Hash } from "viem";
+import { encodeFunctionData, parseEventLogs, type Abi, type Hash } from "viem";
 import { ArrowUpRight, Check, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/session-provider";
 import { ApiError, errorMessage } from "@/lib/api";
+import { useGopaxTransaction } from "@/lib/web3/use-gopax-transaction";
 import {
   CHAIN_ID,
   CONTRACTS_READY,
@@ -75,7 +75,8 @@ export function ClaimButton({
   const { api, user } = useSession();
   const { address, chainId } = useAccount();
   const client = usePublicClient({ chainId: CHAIN_ID });
-  const { writeContractAsync } = useWriteContract();
+  const { sendTransaction: sendGopaxTransaction, isSponsored } =
+    useGopaxTransaction();
   const { switchChainAsync } = useSwitchChain();
   const cache = useQueryClient();
   const [state, setState] = useState<State>("idle");
@@ -141,8 +142,6 @@ export function ClaimButton({
     });
     const matched =
       receipt.status === "success" &&
-      receipt.from.toLowerCase() === claim.wallet.toLowerCase() &&
-      receipt.to?.toLowerCase() === MANAGER_ADDRESS?.toLowerCase() &&
       events.some((event) => {
         const args = event.args as {
           user?: string;
@@ -266,7 +265,7 @@ export function ClaimButton({
           "The claim does not match the configured token or current reward policy.",
           409,
         );
-      const { request } = await client.simulateContract({
+      await client.simulateContract({
         account: wallet,
         address: MANAGER_ADDRESS,
         abi,
@@ -282,9 +281,22 @@ export function ClaimButton({
       });
       assertWallet();
       setState("awaiting-wallet");
-      const txHash = await writeContractAsync({
-        ...request,
-        chainId: CHAIN_ID,
+      const txHash = await sendGopaxTransaction({
+        from: wallet,
+        to: MANAGER_ADDRESS,
+        data: encodeFunctionData({
+          abi,
+          functionName: "claimReward",
+          args: [
+            params.assessmentHash,
+            carbon,
+            baseline,
+            amount,
+            BigInt(params.deadline),
+            params.signature,
+          ],
+        }),
+        action: "Claim GOPAX",
       });
       const claim: PendingClaim = {
         wallet,
@@ -353,7 +365,9 @@ export function ClaimButton({
             ? "Your transaction was sent. A delay does not mean it failed. Check its status before trying anything else."
             : !CONTRACTS_READY && !demo
               ? "Claiming needs valid token and reward manager configuration."
-              : "Your wallet will show the network gas fee before you confirm."}
+              : address && isSponsored(address)
+                ? "Network fee is sponsored by Gopax. Confirm the transaction in the prompt."
+                : "Confirm the transaction in your connected wallet. BNB network fee applies."}
       </p>
       {pending && (
         <a

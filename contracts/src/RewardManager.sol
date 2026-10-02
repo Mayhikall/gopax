@@ -238,12 +238,35 @@ contract RewardManager is Ownable, ReentrancyGuard, EIP712 {
      * @param amount Amount of GOPAX tokens to pay in wei (10^18 decimals).
      */
     function redeemVoucher(string calldata voucherId, uint256 amount) external nonReentrant {
+        _redeemVoucher(msg.sender, voucherId, amount);
+    }
+
+    /**
+     * @notice Redeems a voucher using an EIP-2612 permit instead of a separate approve transaction.
+     * @dev The permit and transfer execute atomically; a failed redemption does not leave an allowance behind.
+     */
+    function redeemVoucherWithPermit(
+        string calldata voucherId,
+        uint256 amount,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external nonReentrant {
         if (bytes(voucherId).length == 0) revert InvalidVoucherId();
         if (amount == 0) revert PriceZero();
 
-        bool success = gopaxToken.transferFrom(msg.sender, treasury, amount);
+        gopaxToken.permit(msg.sender, address(this), amount, deadline, v, r, s);
+        _redeemVoucher(msg.sender, voucherId, amount);
+    }
+
+    function _redeemVoucher(address user, string calldata voucherId, uint256 amount) internal {
+        if (bytes(voucherId).length == 0) revert InvalidVoucherId();
+        if (amount == 0) revert PriceZero();
+
+        bool success = gopaxToken.transferFrom(user, treasury, amount);
         if (!success) revert TransferFailed();
 
-        emit VoucherRedeemed(msg.sender, voucherId, amount, block.timestamp);
+        emit VoucherRedeemed(user, voucherId, amount, block.timestamp);
     }
 }
