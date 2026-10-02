@@ -109,6 +109,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           defaultChain: bscTestnet,
           embeddedWallets: {
             ethereum: { createOnLogin: "users-without-wallets" },
+            showWalletUIs: true,
           },
           appearance: {
             theme: "light",

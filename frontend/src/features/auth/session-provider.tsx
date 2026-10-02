@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { usePrivy, useWallets, useLoginWithOAuth } from "@privy-io/react-auth";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { request, ApiError } from "@/lib/api";
 import type { User } from "@/types";
@@ -36,7 +36,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     isModalOpen,
   } = usePrivy();
   const { ready: walletsReady } = useWallets();
-  const { initOAuth, loading: oAuthLoading } = useLoginWithOAuth();
   const cache = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -129,14 +128,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     privyReady && (!authenticated || (walletsReady && !syncing));
 
   const login = useCallback(
-    async (method: LoginMethod = "google") => {
-      if (method === "google") {
-        await initOAuth({ provider: "google" });
-        return;
-      }
+    (method: LoginMethod = "google") => {
       privyLogin({ loginMethods: [method] });
     },
-    [initOAuth, privyLogin],
+    [privyLogin],
   );
 
   return (
@@ -144,7 +139,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         ready,
-        busy: isModalOpen || syncing || oAuthLoading,
+        busy: isModalOpen || syncing,
         login,
         logout: async () => {
           clear();
