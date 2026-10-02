@@ -8,10 +8,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { usePrivy, useWallets, useLoginWithSiwe } from "@privy-io/react-auth";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { request, ApiError } from "@/lib/api";
-import { CHAIN_ID } from "@/lib/web3/config";
 import type { User } from "@/types";
 
 type LoginMethod = "google" | "wallet";
@@ -37,8 +36,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     isModalOpen,
   } = usePrivy();
   const { ready: walletsReady } = useWallets();
-  const { generateSiweMessage, loginWithSiwe } = useLoginWithSiwe();
-  const [directConnecting, setDirectConnecting] = useState(false);
   const cache = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -131,91 +128,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     privyReady && (!authenticated || (walletsReady && !syncing));
 
   const login = useCallback(
-    async (method: LoginMethod = "google") => {
-      if (method === "wallet" && typeof window !== "undefined") {
-        const anyWin = window as unknown as {
-          ethereum?: {
-            isBitKeep?: boolean;
-            isMetaMask?: boolean;
-            isCoinbaseWallet?: boolean;
-            request?: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-            providers?: Array<{
-              isBitKeep?: boolean;
-              request?: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-            }>;
-          };
-          bitkeep?: {
-            ethereum?: {
-              request?: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-            };
-          };
-        };
-
-        const injected =
-          anyWin.bitkeep?.ethereum ||
-          anyWin.ethereum?.providers?.find((p) => p.isBitKeep) ||
-          anyWin.ethereum;
-
-        if (injected && typeof injected.request === "function") {
-          try {
-            setDirectConnecting(true);
-            const accounts = (await injected.request({
-              method: "eth_requestAccounts",
-            })) as string[];
-
-            if (!accounts || accounts.length === 0 || !accounts[0]) {
-              throw new Error("No accounts found in connected wallet.");
-            }
-
-            const address = accounts[0];
-            const message = await generateSiweMessage({
-              address,
-              chainId: `eip155:${CHAIN_ID}` as `eip155:${number}`,
-            });
-
-            const signature = (await injected.request({
-              method: "personal_sign",
-              params: [message, address],
-            })) as string;
-
-            const clientType =
-              anyWin.bitkeep || anyWin.ethereum?.isBitKeep
-                ? "bitget_wallet"
-                : anyWin.ethereum?.isMetaMask
-                  ? "metamask"
-                  : anyWin.ethereum?.isCoinbaseWallet
-                    ? "coinbase_wallet"
-                    : "unknown_browser_extension";
-
-            await loginWithSiwe({
-              signature,
-              message,
-              walletClientType: clientType,
-              connectorType: "injected",
-            });
-            return;
-          } catch (error: unknown) {
-            const err = error as { code?: number; message?: string };
-            if (
-              err?.code === 4001 ||
-              err?.message?.includes("rejected") ||
-              err?.message?.includes("denied")
-            ) {
-              throw new Error("Connection request was cancelled.");
-            }
-            console.warn(
-              "[auth] Direct wallet connection failed, falling back to Privy modal:",
-              error,
-            );
-          } finally {
-            setDirectConnecting(false);
-          }
-        }
-      }
-
+    (method: LoginMethod = "google") => {
       privyLogin({ loginMethods: [method] });
     },
-    [generateSiweMessage, loginWithSiwe, privyLogin],
+    [privyLogin],
   );
 
   return (
@@ -223,7 +139,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         ready,
-        busy: isModalOpen || syncing || directConnecting,
+        busy: isModalOpen || syncing,
         login,
         logout: async () => {
           clear();
