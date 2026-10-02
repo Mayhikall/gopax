@@ -4,6 +4,7 @@ import { formatUnits } from "viem";
 import { TOKEN_ADDRESS, CONTRACTS_READY, CHAIN_ID } from "@/lib/web3/config";
 import { quantity } from "@/lib/format";
 import { usePreview } from "@/components/layout/preview-context";
+import { useSession } from "@/features/auth/session-provider";
 const balanceAbi = [
   {
     type: "function",
@@ -22,7 +23,9 @@ const balanceAbi = [
 ] as const;
 export function Balance({ demo = false }: { demo?: boolean }) {
   const preview = usePreview();
-  const { address } = useAccount();
+  const { user } = useSession();
+  const { address: wagmiAddress } = useAccount();
+  const address = (user?.walletAddress as `0x${string}` | undefined) || wagmiAddress;
   const decimals = useReadContract({
     address: TOKEN_ADDRESS,
     abi: balanceAbi,

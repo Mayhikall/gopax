@@ -73,7 +73,9 @@ export function ClaimButton({
   demo?: boolean;
 }) {
   const { api, user } = useSession();
-  const { address, chainId } = useAccount();
+  const { address: wagmiAddress, chainId } = useAccount();
+  const address =
+    (user?.walletAddress as `0x${string}` | undefined) || wagmiAddress;
   const client = usePublicClient({ chainId: CHAIN_ID });
   const { sendTransaction: sendGopaxTransaction, isSponsored } =
     useGopaxTransaction();

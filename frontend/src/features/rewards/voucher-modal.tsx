@@ -46,8 +46,10 @@ export function VoucherModal({
   onSuccess,
   demo = false,
 }: VoucherModalProps) {
-  const { address } = useAccount();
-  const { api } = useSession();
+  const { address: wagmiAddress } = useAccount();
+  const { api, user } = useSession();
+  const address =
+    (user?.walletAddress as `0x${string}` | undefined) || wagmiAddress;
   const publicClient = usePublicClient({ chainId: CHAIN_ID });
   const {
     sendTransaction: sendGopaxTransaction,
